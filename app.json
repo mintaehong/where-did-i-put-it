@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "어디 뒀지?",
+    "slug": "where-did-i-put-it",
+    "version": "0.1.0",
+    "scheme": "where-did-i-put-it",
+    "platforms": ["android", "ios"],
+    "plugins": ["expo-router"]
+  }
+}

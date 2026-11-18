@@ -1,3 +1,16 @@
+# md
+AGENTS.md
+docs/*
+# Expo
+node_modules/
+.expo/
+.npm-cache/
+coverage/
+/android/
+/ios/
+expo-env.d.ts
+
+*.html
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
