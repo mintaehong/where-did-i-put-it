@@ -15,13 +15,33 @@ async function openStorage() {
   }
 }
 
-export async function listRootFolders() {
+function getStorage() {
   database ??= openStorage().catch((error: unknown) => {
     database = undefined;
     throw error;
   });
-  const db = await database;
+  return database;
+}
+
+export async function listRootFolders() {
+  const db = await getStorage();
   return db.getAllAsync<{ id: string; name: string }>(
     'SELECT id, name FROM folders WHERE parent_id IS NULL ORDER BY created_at, id',
+  );
+}
+
+export async function getFolder(id: string) {
+  const db = await getStorage();
+  return db.getFirstAsync<{ id: string; name: string }>(
+    'SELECT id, name FROM folders WHERE id = ?',
+    id,
+  );
+}
+
+export async function listChildFolders(parentId: string) {
+  const db = await getStorage();
+  return db.getAllAsync<{ id: string; name: string }>(
+    'SELECT id, name FROM folders WHERE parent_id = ? ORDER BY created_at, id',
+    parentId,
   );
 }
