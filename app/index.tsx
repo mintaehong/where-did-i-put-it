@@ -1,13 +1,16 @@
 import { Link } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import ItemSearch from '../src/ItemSearch';
+
 export default function HomeScreen() {
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text accessibilityRole="header" style={styles.heading}>
         {'어디에 뒀더라? 👋\n엄마가 기억해 줄게.'}
       </Text>
       <Text style={styles.description}>소중한 물건들, 여기 차곡차곡 모아두자.</Text>
+      <ItemSearch />
       <View style={styles.memo}>
         <View style={styles.memoCopy}>
           <Text style={styles.memoLabel}>엄마의 보관 노트</Text>

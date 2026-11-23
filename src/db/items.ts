@@ -28,6 +28,24 @@ export async function getItemDetails(id: string) {
   return { ...item, path: await getFolderPath(item.folderId) };
 }
 
+export async function searchItems(name: string) {
+  const query = name.trim();
+  if (!query) return [];
+
+  const db = await getStorage();
+  const items = await db.getAllAsync<Item & { folderId: string }>(
+    `SELECT ${itemColumns}, items.folder_id AS folderId ${itemTables}
+     WHERE instr(lower(items.name), lower(?)) > 0 ORDER BY items.name, items.id`,
+    query,
+  );
+  const paths = new Map<string, ReturnType<typeof getFolderPath>>();
+  return Promise.all(items.map(async (item) => {
+    const path = paths.get(item.folderId) ?? getFolderPath(item.folderId);
+    paths.set(item.folderId, path);
+    return { ...item, path: await path };
+  }));
+}
+
 export async function renameItem(id: string, name: string) {
   const trimmed = name.trim();
   if (!trimmed) throw new Error('물건 이름을 입력해 주세요.');

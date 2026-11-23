@@ -8,7 +8,7 @@ import HomeScreen from '../app/index';
 import ItemScreen from '../app/item/[id]';
 import StorageScreen from '../app/storage';
 import { createChildFolder, listRootFolders, renameFolder } from '../src/db/folders';
-import { attachItemPhoto, createItem, deleteItem, getItemDetails, listItems, moveItem, removeItemPhoto, renameItem, replaceItemPhoto } from '../src/db/items';
+import { attachItemPhoto, createItem, deleteItem, getItemDetails, listItems, moveItem, removeItemPhoto, renameItem, replaceItemPhoto, searchItems } from '../src/db/items';
 
 jest.mock('../src/db/items', () => ({
   createItem: jest.fn(),
@@ -18,6 +18,7 @@ jest.mock('../src/db/items', () => ({
   deleteItem: jest.fn(),
   moveItem: jest.fn(),
   getItemDetails: jest.fn(),
+  searchItems: jest.fn(),
   renameItem: jest.fn(),
   listItems: jest.fn(async () => []),
 }));
@@ -277,6 +278,27 @@ test('물건을 다른 보관 위치로 옮기면 경로와 양쪽 목록이 갱
   await fireEvent.press(screen.getByRole('button', { name: '회사' }));
   expect(await screen.findByRole('link', { name: '시계' })).toBeOnTheScreen();
   expect(listItems).toHaveBeenLastCalledWith('office');
+});
+
+test('홈에서 물건 이름 일부를 입력하면 바로 결과가 나오고 상세를 열 수 있다', async () => {
+  const item = {
+    id: 'sticker', name: '스티커', photoPath: null, folderId: 'closet',
+    path: [{ id: 'home', name: '우리 집' }, { id: 'closet', name: '옷장' }],
+  };
+  jest.mocked(searchItems).mockResolvedValueOnce([]).mockResolvedValueOnce([item]);
+  jest.mocked(getItemDetails).mockResolvedValueOnce(item);
+  await renderRouter({ index: HomeScreen, 'item/[id]': ItemScreen });
+
+  const input = screen.getByLabelText('물건 이름 검색');
+  await fireEvent.changeText(input, '없는 물건');
+  expect(await screen.findByText(/해당하는 물건이 없어요/)).toBeOnTheScreen();
+
+  await fireEvent.changeText(input, ' 스티 ');
+  expect(await screen.findByText('우리 집 › 옷장')).toBeOnTheScreen();
+  expect(searchItems).toHaveBeenLastCalledWith('스티');
+  await fireEvent.press(screen.getByRole('link', { name: /스티커/ }));
+  expect(screen).toHavePathname('/item/sticker');
+  expect(await screen.findByRole('button', { name: '스티커 이름 변경' })).toBeOnTheScreen();
 });
 
 test('목록에서 물건 상세를 열어 사진과 전체 보관 위치를 확인한다', async () => {
