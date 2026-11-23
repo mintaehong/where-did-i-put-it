@@ -16,7 +16,7 @@ async function openStorage() {
   }
 }
 
-function getStorage() {
+export function getStorage() {
   database ??= openStorage().catch((error: unknown) => {
     database = undefined;
     throw error;

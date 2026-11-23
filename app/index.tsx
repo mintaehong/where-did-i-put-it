@@ -11,7 +11,7 @@ export default function HomeScreen() {
       <View style={styles.memo}>
         <View style={styles.memoCopy}>
           <Text style={styles.memoLabel}>엄마의 보관 노트</Text>
-          <Text style={styles.memoTitle}>아직 기억해 둔 물건이 없네~</Text>
+          <Text style={styles.memoTitle}>물건을 어디에 뒀는지 적어 두자~</Text>
         </View>
         <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.illustration}>
           <Text style={styles.box}>📦</Text>

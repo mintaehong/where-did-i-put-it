@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import ChildFolders from '../../src/ChildFolders';
+import FolderItems from '../../src/FolderItems';
 import RenameFolder from '../../src/RenameFolder';
 import { getFolderPath } from '../../src/db/folders';
 import { screenStyles } from '../../src/theme';
@@ -60,6 +61,7 @@ export default function FolderScreen() {
               : previous);
           }} />
           <ChildFolders key={id} parentId={id} />
+          <FolderItems key={`items-${id}`} folderId={id} />
         </>
       ) : (
         <Text style={screenStyles.body}>

@@ -6,6 +6,12 @@ import FolderScreen from '../app/folder/[id]';
 import HomeScreen from '../app/index';
 import StorageScreen from '../app/storage';
 import { createChildFolder, listRootFolders, renameFolder } from '../src/db/folders';
+import { createItem, listItems } from '../src/db/items';
+
+jest.mock('../src/db/items', () => ({
+  createItem: jest.fn(),
+  listItems: jest.fn(async () => []),
+}));
 
 let mockBedroomName = '안방';
 
@@ -77,6 +83,15 @@ test('보관함에서 우리 집을 거치지 않고 안방을 연다', async ()
   expect(screen).toHavePathname('/folder/closet');
   expect(await screen.findByRole('button', { name: '옷장 이름 변경' })).toBeOnTheScreen();
   expect(screen.getByRole('link', { name: '우리 집' })).toBeOnTheScreen();
+
+  jest.mocked(createItem).mockResolvedValue({ id: 'passport', name: '여권' });
+  await fireEvent.press(await screen.findByRole('button', { name: '물건 추가' }));
+  expect(screen.getByRole('button', { name: '물건 저장' })).toBeDisabled();
+  await fireEvent.changeText(screen.getByLabelText('물건 이름'), ' 여권 ');
+  await fireEvent.press(screen.getByRole('button', { name: '물건 저장' }));
+  expect(listItems).toHaveBeenCalledWith('closet');
+  expect(createItem).toHaveBeenCalledWith('closet', '여권');
+  expect(await screen.findByText('여권')).toBeOnTheScreen();
 
   await fireEvent.press(screen.getByRole('link', { name: '침실' }));
   expect(screen).toHavePathname('/folder/bedroom');

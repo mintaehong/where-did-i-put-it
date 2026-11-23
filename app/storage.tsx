@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Button, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import ChildFolders from '../src/ChildFolders';
+import FolderItems from '../src/FolderItems';
 import RenameFolder from '../src/RenameFolder';
 import { listRootFolders } from '../src/db/folders';
 import { colors, screenStyles } from '../src/theme';
@@ -78,6 +79,7 @@ export default function StorageScreen() {
       {selected && (
         <>
           <ChildFolders key={selected.id} parentId={selected.id} />
+          <FolderItems key={`items-${selected.id}`} folderId={selected.id} />
         </>
       )}
     </ScrollView>
