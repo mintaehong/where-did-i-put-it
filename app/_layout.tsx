@@ -21,7 +21,7 @@ export default function RootLayout() {
         }}
       />
       <Stack.Screen name="storage" options={{ title: '보관함' }} />
-      <Stack.Screen name="folder/[id]" options={{ title: '보관 장소' }} />
+      <Stack.Screen name="folder/[id]" dangerouslySingular options={{ title: '보관 장소' }} />
     </Stack>
   );
 }

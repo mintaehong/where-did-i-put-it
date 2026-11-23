@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 
+import RootLayout from '../app/_layout';
 import FolderScreen from '../app/folder/[id]';
 import HomeScreen from '../app/index';
 import StorageScreen from '../app/storage';
@@ -10,10 +11,13 @@ jest.mock('../src/db/folders', () => ({
   listRootFolders: jest.fn(),
   createChildFolder: jest.fn(),
   listChildFolders: async (id: string) => id === 'home' ? [{ id: 'bedroom', name: '안방' }] : [],
-  getFolder: async (id: string) => {
-    if (id === 'bedroom') return { id, name: '안방' };
-    if (id === 'closet') return { id, name: '옷장' };
-    return null;
+  getFolderPath: async (id: string) => {
+    const path = [
+      { id: 'home', name: '우리 집' },
+      { id: 'bedroom', name: '안방' },
+      { id: 'closet', name: '옷장' },
+    ];
+    return path.slice(0, path.findIndex((folder) => folder.id === id) + 1);
   },
 }));
 
@@ -35,7 +39,7 @@ test('선택한 장소에 하위 폴더를 저장하고 목록에 표시한다',
 
 test('보관함에서 우리 집을 거치지 않고 안방을 연다', async () => {
   jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }]);
-  await renderRouter({ index: HomeScreen, storage: StorageScreen, 'folder/[id]': FolderScreen });
+  await renderRouter({ _layout: RootLayout, index: HomeScreen, storage: StorageScreen, 'folder/[id]': FolderScreen });
 
   expect(screen.getByText(/엄마가 기억해 줄게/)).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('link', { name: '보관함 열기' }));
@@ -54,8 +58,9 @@ test('보관함에서 우리 집을 거치지 않고 안방을 연다', async ()
   await fireEvent.press(await screen.findByRole('link', { name: '옷장' }));
   expect(screen).toHavePathname('/folder/closet');
   expect(await screen.findByRole('header', { name: '옷장' })).toBeOnTheScreen();
+  expect(screen.getByRole('link', { name: '우리 집' })).toBeOnTheScreen();
 
-  await act(() => router.back());
+  await fireEvent.press(screen.getByRole('link', { name: '안방' }));
   expect(screen).toHavePathname('/folder/bedroom');
   await act(() => router.back());
   expect(screen).toHavePathname('/storage');

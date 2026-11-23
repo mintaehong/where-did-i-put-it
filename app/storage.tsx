@@ -12,7 +12,8 @@ type FolderList =
 export default function StorageScreen() {
   const [result, setResult] = useState<FolderList>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const [selectedId, setSelectedId] = useState<string>();
+  const { locationId: selectedId } = useLocalSearchParams<{ locationId?: string }>();
+  const router = useRouter();
   const roots = result.status === 'ready' ? result.folders : [];
   const selected = roots.find((folder) => folder.id === selectedId) ?? roots[0];
 
@@ -53,7 +54,7 @@ export default function StorageScreen() {
               key={folder.id}
               accessibilityRole="button"
               accessibilityState={{ selected: folder.id === selected?.id }}
-              onPress={() => setSelectedId(folder.id)}
+              onPress={() => router.setParams({ locationId: folder.id })}
               style={[styles.location, folder.id === selected?.id && styles.selectedLocation]}
             >
               <Text style={screenStyles.body}>{folder.name}</Text>
@@ -85,3 +86,4 @@ const styles = StyleSheet.create({
     backgroundColor: '#DFEDE3',
   },
 });
+import { useLocalSearchParams, useRouter } from 'expo-router';

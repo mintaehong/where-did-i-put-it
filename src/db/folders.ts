@@ -31,12 +31,29 @@ export async function listRootFolders() {
   );
 }
 
-export async function getFolder(id: string) {
+export async function getFolderPath(id: string) {
   const db = await getStorage();
-  return db.getFirstAsync<{ id: string; name: string }>(
-    'SELECT id, name FROM folders WHERE id = ?',
+  const ancestors = await db.getAllAsync<{ id: string; name: string; parent_id: string | null }>(
+    `WITH RECURSIVE ancestors AS (
+       SELECT id, name, parent_id FROM folders WHERE id = ?
+       UNION
+       SELECT folders.id, folders.name, folders.parent_id
+       FROM folders JOIN ancestors ON folders.id = ancestors.parent_id
+     )
+     SELECT id, name, parent_id FROM ancestors`,
     id,
   );
+  const byId = new Map(ancestors.map((folder) => [folder.id, folder]));
+  const path: { id: string; name: string }[] = [];
+  let nextId: string | null = id;
+  while (nextId !== null) {
+    const folder = byId.get(nextId);
+    if (!folder) return [];
+    path.push({ id: folder.id, name: folder.name });
+    byId.delete(nextId);
+    nextId = folder.parent_id;
+  }
+  return path.reverse();
 }
 
 export async function listChildFolders(parentId: string) {
