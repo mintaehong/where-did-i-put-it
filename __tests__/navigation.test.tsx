@@ -8,7 +8,7 @@ import HomeScreen from '../app/index';
 import ItemScreen from '../app/item/[id]';
 import StorageScreen from '../app/storage';
 import { createChildFolder, listRootFolders, renameFolder } from '../src/db/folders';
-import { attachItemPhoto, createItem, deleteItem, getItemDetails, listItems, removeItemPhoto, renameItem, replaceItemPhoto } from '../src/db/items';
+import { attachItemPhoto, createItem, deleteItem, getItemDetails, listItems, moveItem, removeItemPhoto, renameItem, replaceItemPhoto } from '../src/db/items';
 
 jest.mock('../src/db/items', () => ({
   createItem: jest.fn(),
@@ -16,6 +16,7 @@ jest.mock('../src/db/items', () => ({
   replaceItemPhoto: jest.fn(),
   removeItemPhoto: jest.fn(),
   deleteItem: jest.fn(),
+  moveItem: jest.fn(),
   getItemDetails: jest.fn(),
   renameItem: jest.fn(),
   listItems: jest.fn(async () => []),
@@ -249,6 +250,33 @@ test('물건 삭제를 확인하면 보관함 목록에서 사라진다', async 
   expect(await screen.findByText('아직 등록된 물건이 없어요.')).toBeOnTheScreen();
   expect(screen).toHavePathname('/storage');
   expect(screen.queryByRole('link', { name: '시계' })).toBeNull();
+});
+
+test('물건을 다른 보관 위치로 옮기면 경로와 양쪽 목록이 갱신된다', async () => {
+  const home = { id: 'home', name: '우리 집' };
+  const office = { id: 'office', name: '회사' };
+  const item = { id: 'watch', name: '시계', photoPath: 'images/watch.jpg' };
+  jest.mocked(listRootFolders).mockResolvedValue([home, office]);
+  jest.mocked(listItems).mockResolvedValueOnce([item]);
+  jest.mocked(getItemDetails).mockResolvedValueOnce({ ...item, folderId: home.id, path: [home] });
+  jest.mocked(moveItem).mockResolvedValueOnce(undefined);
+  await renderRouter({ storage: StorageScreen, 'item/[id]': ItemScreen }, { initialUrl: '/storage' });
+
+  await fireEvent.press(await screen.findByRole('link', { name: '시계' }));
+  await fireEvent.press(await screen.findByRole('button', { name: '보관 위치 바꾸기' }));
+  expect(screen.getByRole('button', { name: '여기로 옮기기' })).toBeDisabled();
+  await fireEvent.press(await screen.findByRole('button', { name: '회사' }));
+  await fireEvent.press(screen.getByRole('button', { name: '여기로 옮기기' }));
+
+  expect(moveItem).toHaveBeenCalledWith('watch', 'office');
+  expect(await screen.findByText('회사')).toBeOnTheScreen();
+  expect(screen.getByLabelText('시계 사진')).toBeOnTheScreen();
+  await act(() => router.back());
+  expect(await screen.findByText('아직 등록된 물건이 없어요.')).toBeOnTheScreen();
+  jest.mocked(listItems).mockResolvedValueOnce([item]);
+  await fireEvent.press(screen.getByRole('button', { name: '회사' }));
+  expect(await screen.findByRole('link', { name: '시계' })).toBeOnTheScreen();
+  expect(listItems).toHaveBeenLastCalledWith('office');
 });
 
 test('목록에서 물건 상세를 열어 사진과 전체 보관 위치를 확인한다', async () => {

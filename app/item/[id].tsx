@@ -4,6 +4,7 @@ import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View
 
 import { attachItemPhoto, deleteItem, getItemDetails, removeItemPhoto, renameItem, replaceItemPhoto } from '../../src/db/items';
 import EditableName from '../../src/EditableName';
+import ItemLocation from '../../src/ItemLocation';
 import { itemPhotoUri, type SelectedPhoto } from '../../src/itemPhotoFiles';
 import { pickItemPhoto } from '../../src/pickItemPhoto';
 import { colors, screenStyles } from '../../src/theme';
@@ -53,12 +54,9 @@ function ItemDetails({ id }: { id: string }) {
               setItem((previous) => previous ? { ...previous, photoPath } : previous);
             }}
           />
-          <View style={styles.location}>
-            <Text accessibilityRole="header" style={styles.label}>보관 위치</Text>
-            <Text style={screenStyles.body}>
-              {item.path.length ? item.path.map((folder) => folder.name).join(' › ') : '보관 위치를 찾을 수 없어요.'}
-            </Text>
-          </View>
+          <ItemLocation itemId={item.id} folderId={item.folderId} path={item.path} onMoved={(folder, path) => {
+            setItem((previous) => previous ? { ...previous, folderId: folder.id, path } : previous);
+          }} />
           <DeleteItem itemId={item.id} itemName={item.name} onDeleted={() => {
             setItem(null);
             if (!navigation.isFocused()) return;
@@ -314,6 +312,5 @@ const styles = StyleSheet.create({
   saveIcon: { color: '#FFFFFF', fontSize: 23, fontWeight: '700' },
   cancelIcon: { color: colors.text, fontSize: 25 },
   dimmed: { opacity: 0.5 },
-  location: { gap: 6, backgroundColor: '#DFEDE3', borderRadius: 16, padding: 16 },
   label: { color: colors.text, fontSize: 16, fontWeight: '700' },
 });

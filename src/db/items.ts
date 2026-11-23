@@ -42,6 +42,16 @@ export async function renameItem(id: string, name: string) {
   if (!result.changes) throw new Error('물건을 찾을 수 없어요.');
 }
 
+export async function moveItem(itemId: string, folderId: string) {
+  const db = await getStorage();
+  const result = await db.runAsync(
+    `UPDATE items SET folder_id = ?, updated_at = ?
+     WHERE id = ? AND EXISTS (SELECT 1 FROM folders WHERE id = ?)`,
+    folderId, new Date().toISOString(), itemId, folderId,
+  );
+  if (!result.changes) throw new Error('물건이나 보관 위치를 찾을 수 없어요.');
+}
+
 export async function attachItemPhoto(itemId: string, photo: SelectedPhoto) {
   const db = await getStorage();
   const imageId = randomUUID();
