@@ -10,7 +10,11 @@ jest.mock('../src/db/folders', () => ({
   listRootFolders: jest.fn(),
   createChildFolder: jest.fn(),
   listChildFolders: async (id: string) => id === 'home' ? [{ id: 'bedroom', name: '안방' }] : [],
-  getFolder: async (id: string) => id === 'bedroom' ? { id, name: '안방' } : null,
+  getFolder: async (id: string) => {
+    if (id === 'bedroom') return { id, name: '안방' };
+    if (id === 'closet') return { id, name: '옷장' };
+    return null;
+  },
 }));
 
 test('선택한 장소에 하위 폴더를 저장하고 목록에 표시한다', async () => {
@@ -41,6 +45,18 @@ test('보관함에서 우리 집을 거치지 않고 안방을 연다', async ()
   expect(screen).toHavePathname('/folder/bedroom');
   expect(await screen.findByRole('header', { name: '안방' })).toBeOnTheScreen();
 
+  jest.mocked(createChildFolder).mockResolvedValue({ id: 'closet', name: '옷장' });
+  await fireEvent.press(await screen.findByRole('button', { name: '폴더 추가' }));
+  await fireEvent.changeText(screen.getByLabelText('폴더 이름'), '옷장');
+  await fireEvent.press(screen.getByRole('button', { name: '저장' }));
+  expect(createChildFolder).toHaveBeenCalledWith('bedroom', '옷장');
+
+  await fireEvent.press(await screen.findByRole('link', { name: '옷장' }));
+  expect(screen).toHavePathname('/folder/closet');
+  expect(await screen.findByRole('header', { name: '옷장' })).toBeOnTheScreen();
+
+  await act(() => router.back());
+  expect(screen).toHavePathname('/folder/bedroom');
   await act(() => router.back());
   expect(screen).toHavePathname('/storage');
 });
