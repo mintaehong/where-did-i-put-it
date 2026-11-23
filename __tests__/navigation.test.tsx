@@ -8,11 +8,12 @@ import HomeScreen from '../app/index';
 import ItemScreen from '../app/item/[id]';
 import StorageScreen from '../app/storage';
 import { createChildFolder, listRootFolders, renameFolder } from '../src/db/folders';
-import { attachItemPhoto, createItem, getItemDetails, listItems, renameItem } from '../src/db/items';
+import { attachItemPhoto, createItem, getItemDetails, listItems, renameItem, replaceItemPhoto } from '../src/db/items';
 
 jest.mock('../src/db/items', () => ({
   createItem: jest.fn(),
   attachItemPhoto: jest.fn(),
+  replaceItemPhoto: jest.fn(),
   getItemDetails: jest.fn(),
   renameItem: jest.fn(),
   listItems: jest.fn(async () => []),
@@ -173,6 +174,33 @@ test('사진 없는 물건의 상세에서 사진을 추가한다', async () => 
   expect(attachItemPhoto).toHaveBeenCalledWith('passport', asset);
   expect(await screen.findByLabelText('여권 사진')).toHaveProp('source', { uri: 'file:///documents/images/passport.jpg' });
   expect(screen.queryByRole('button', { name: '사진 저장' })).toBeNull();
+});
+
+test('상세에서 사진 교체를 취소하거나 저장한다', async () => {
+  const asset = { uri: 'file:///cache/new.jpg', width: 100, height: 100 };
+  jest.mocked(getItemDetails).mockResolvedValueOnce({
+    id: 'watch', name: '시계', photoPath: 'images/old.jpg', folderId: 'home', path: [],
+  });
+  jest.mocked(launchImageLibraryAsync).mockResolvedValue({ canceled: false, assets: [asset] });
+  jest.mocked(replaceItemPhoto).mockResolvedValueOnce('images/new.jpg');
+  await renderRouter({ 'item/[id]': ItemScreen }, { initialUrl: '/item/watch' });
+
+  const chooseReplacement = async () => {
+    await fireEvent.press(await screen.findByRole('button', { name: '사진 바꾸기' }));
+    expect(screen).toHavePathname('/item/watch');
+    expect(screen.getByLabelText('시계 사진')).toHaveProp('source', { uri: 'file:///documents/images/old.jpg' });
+    await fireEvent.press(screen.getByRole('button', { name: '앨범에서 사진 추가' }));
+    expect(await screen.findByLabelText('선택한 사진')).toBeOnTheScreen();
+  };
+  await chooseReplacement();
+  await fireEvent.press(screen.getByRole('button', { name: '사진 선택 취소' }));
+  expect(replaceItemPhoto).not.toHaveBeenCalled();
+  expect(screen.getByLabelText('시계 사진')).toHaveProp('source', { uri: 'file:///documents/images/old.jpg' });
+
+  await chooseReplacement();
+  await fireEvent.press(screen.getByRole('button', { name: '사진 저장' }));
+  expect(replaceItemPhoto).toHaveBeenCalledWith('watch', 'images/old.jpg', asset);
+  expect(await screen.findByLabelText('시계 사진')).toHaveProp('source', { uri: 'file:///documents/images/new.jpg' });
 });
 
 test('목록에서 물건 상세를 열어 사진과 전체 보관 위치를 확인한다', async () => {

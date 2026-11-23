@@ -23,10 +23,17 @@ export async function copyItemPhoto(photo: SelectedPhoto, id: string) {
   }
 }
 
-export function discardItemPhoto(file: File) {
+export function discardItemPhoto(photo: File | string) {
   try {
+    const file = typeof photo === 'string' ? new File(Paths.document, photo) : photo;
     if (file.exists) file.delete();
   } catch (error) {
     console.warn('임시 사진을 정리하지 못했어요.', error);
+  }
+}
+
+export function discardStoredItemPhoto(relativePath: string) {
+  if (/^images\/[a-f0-9-]+(?:\.[a-z0-9]{1,8})?$/i.test(relativePath)) {
+    discardItemPhoto(relativePath);
   }
 }

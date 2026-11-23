@@ -1,6 +1,6 @@
 import { randomUUID } from 'expo-crypto';
 
-import { copyItemPhoto, discardItemPhoto, type SelectedPhoto } from '../itemPhotoFiles';
+import { copyItemPhoto, discardItemPhoto, discardStoredItemPhoto, type SelectedPhoto } from '../itemPhotoFiles';
 import { getFolderPath, getStorage } from './folders';
 
 type Item = { id: string; name: string; photoPath: string | null };
@@ -56,6 +56,25 @@ export async function attachItemPhoto(itemId: string, photo: SelectedPhoto) {
     discardItemPhoto(saved.file);
     throw error;
   }
+}
+
+export async function replaceItemPhoto(itemId: string, previousPath: string, photo: SelectedPhoto) {
+  const db = await getStorage();
+  const saved = await copyItemPhoto(photo, randomUUID());
+  try {
+    const result = await db.runAsync(
+      `UPDATE item_images SET relative_path = ?, mime_type = ?, byte_size = ?, created_at = ?
+       WHERE item_id = ? AND relative_path = ?`,
+      saved.relativePath, photo.mimeType ?? null, saved.size, new Date().toISOString(), itemId, previousPath,
+    );
+    if (!result.changes) throw new Error('교체할 사진을 찾을 수 없어요.');
+  } catch (error) {
+    discardItemPhoto(saved.file);
+    throw error;
+  }
+
+  discardStoredItemPhoto(previousPath);
+  return saved.relativePath;
 }
 
 export async function createItem(folderId: string, name: string, photo?: SelectedPhoto): Promise<Item> {

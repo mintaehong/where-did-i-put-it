@@ -2,7 +2,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { attachItemPhoto, getItemDetails, renameItem } from '../../src/db/items';
+import { attachItemPhoto, getItemDetails, renameItem, replaceItemPhoto } from '../../src/db/items';
 import EditableName from '../../src/EditableName';
 import { itemPhotoUri, type SelectedPhoto } from '../../src/itemPhotoFiles';
 import { pickItemPhoto } from '../../src/pickItemPhoto';
@@ -16,7 +16,6 @@ export default function ItemScreen() {
 function ItemDetails({ id }: { id: string }) {
   const [item, setItem] = useState<Awaited<ReturnType<typeof getItemDetails>>>();
   const [loadError, setLoadError] = useState(false);
-  const [photoError, setPhotoError] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -44,24 +43,14 @@ function ItemDetails({ id }: { id: string }) {
             persistName={renameItem}
             onSaved={(name) => setItem((previous) => previous ? { ...previous, name } : previous)}
           />
-          {!item.photoPath ? (
-            <AddPhoto itemId={item.id} onSaved={(photoPath) => {
+          <ItemPhoto
+            itemId={item.id}
+            itemName={item.name}
+            previousPath={item.photoPath}
+            onSaved={(photoPath) => {
               setItem((previous) => previous ? { ...previous, photoPath } : previous);
-            }} />
-          ) : !photoError ? (
-            <Image
-              accessibilityLabel={`${item.name} 사진`}
-              accessible
-              source={{ uri: itemPhotoUri(item.photoPath) }}
-              style={styles.photo}
-              resizeMode="contain"
-              onError={() => setPhotoError(true)}
-            />
-          ) : (
-            <View style={styles.placeholder}>
-              <Text style={screenStyles.body}>사진을 불러오지 못했어요.</Text>
-            </View>
-          )}
+            }}
+          />
           <View style={styles.location}>
             <Text accessibilityRole="header" style={styles.label}>보관 위치</Text>
             <Text style={screenStyles.body}>
@@ -74,11 +63,20 @@ function ItemDetails({ id }: { id: string }) {
   );
 }
 
-function AddPhoto({ itemId, onSaved }: { itemId: string; onSaved: (path: string) => void }) {
+function ItemPhoto({ itemId, itemName, previousPath, onSaved }: {
+  itemId: string;
+  itemName: string;
+  previousPath: string | null;
+  onSaved: (path: string) => void;
+}) {
   const [photo, setPhoto] = useState<SelectedPhoto>();
+  const [showSources, setShowSources] = useState(false);
+  const [failedUri, setFailedUri] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const pending = useRef(false);
+  const existingUri = previousPath ? itemPhotoUri(previousPath) : undefined;
+  const displayedUri = photo?.uri ?? existingUri;
 
   async function runPhotoAction(action: () => Promise<void>, errorMessage?: string) {
     if (pending.current) return;
@@ -100,19 +98,42 @@ function AddPhoto({ itemId, onSaved }: { itemId: string; onSaved: (path: string)
   }
 
   return (
-    <View style={[styles.photoPanel, !photo && styles.emptyPhoto]}>
+    <View style={[styles.photoPanel, !displayedUri && styles.emptyPhoto]}>
+      {displayedUri && (
+        displayedUri === failedUri ? (
+          <View style={styles.placeholder}>
+            <Text style={screenStyles.body}>사진을 불러오지 못했어요.</Text>
+          </View>
+        ) : (
+          <Image
+            key={displayedUri}
+            accessible
+            accessibilityLabel={photo ? '선택한 사진' : `${itemName} 사진`}
+            source={{ uri: displayedUri }}
+            style={styles.photo}
+            resizeMode="contain"
+            onError={() => setFailedUri(displayedUri)}
+          />
+        )
+      )}
       {photo ? (
-        <>
           <View style={styles.previewBar}>
             <Text style={[styles.label, styles.previewLabel]}>미리보기</Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="사진 저장"
-              disabled={busy}
+              disabled={busy || displayedUri === failedUri}
               onPress={() => runPhotoAction(async () => {
-                onSaved(await attachItemPhoto(itemId, photo));
+                const path = previousPath
+                  ? await replaceItemPhoto(itemId, previousPath, photo)
+                  : await attachItemPhoto(itemId, photo);
+                onSaved(path);
+                setPhoto(undefined);
+                setShowSources(false);
               }, '사진을 저장하지 못했어요. 다시 시도해 주세요.')}
-              style={({ pressed }) => [styles.iconButton, styles.saveButton, (busy || pressed) && styles.dimmed]}
+              style={({ pressed }) => [
+                styles.iconButton, styles.saveButton, (busy || pressed || displayedUri === failedUri) && styles.dimmed,
+              ]}
             >
               <Text style={styles.saveIcon}>✓</Text>
             </Pressable>
@@ -123,17 +144,16 @@ function AddPhoto({ itemId, onSaved }: { itemId: string; onSaved: (path: string)
               onPress={() => {
                 setPhoto(undefined);
                 setError(undefined);
+                setShowSources(false);
               }}
               style={({ pressed }) => [styles.iconButton, styles.cancelButton, (busy || pressed) && styles.dimmed]}
             >
               <Text style={styles.cancelIcon}>×</Text>
             </Pressable>
           </View>
-          <Image accessible accessibilityLabel="선택한 사진" source={{ uri: photo.uri }} style={styles.photo} resizeMode="contain" />
-        </>
-      ) : (
+      ) : !previousPath || showSources ? (
         <>
-          <Text style={styles.label}>사진 추가</Text>
+          {!previousPath && <Text style={styles.label}>사진 추가</Text>}
           <View style={styles.photoChoices}>
             <Pressable
               accessibilityRole="button"
@@ -153,7 +173,19 @@ function AddPhoto({ itemId, onSaved }: { itemId: string; onSaved: (path: string)
               <Text style={styles.choiceLabel}>앨범에서 선택</Text>
             </Pressable>
           </View>
+          {previousPath && (
+            <Pressable accessibilityRole="button" disabled={busy} onPress={() => {
+              setShowSources(false);
+              setError(undefined);
+            }} style={styles.changePhoto}>
+              <Text style={styles.choiceLabel}>교체 취소</Text>
+            </Pressable>
+          )}
         </>
+      ) : (
+        <Pressable accessibilityRole="button" onPress={() => setShowSources(true)} style={styles.changePhoto}>
+          <Text style={styles.choiceLabel}>사진 바꾸기</Text>
+        </Pressable>
       )}
       {error && <Text accessibilityRole="alert" style={screenStyles.body}>{error}</Text>}
     </View>
@@ -177,6 +209,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   choiceLabel: { color: '#2D6654', fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  changePhoto: { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 },
   previewBar: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   previewLabel: { flex: 1 },
   iconButton: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
