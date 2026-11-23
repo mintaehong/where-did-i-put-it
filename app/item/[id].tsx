@@ -1,8 +1,8 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { attachItemPhoto, getItemDetails, renameItem, replaceItemPhoto } from '../../src/db/items';
+import { attachItemPhoto, deleteItem, getItemDetails, removeItemPhoto, renameItem, replaceItemPhoto } from '../../src/db/items';
 import EditableName from '../../src/EditableName';
 import { itemPhotoUri, type SelectedPhoto } from '../../src/itemPhotoFiles';
 import { pickItemPhoto } from '../../src/pickItemPhoto';
@@ -16,6 +16,8 @@ export default function ItemScreen() {
 function ItemDetails({ id }: { id: string }) {
   const [item, setItem] = useState<Awaited<ReturnType<typeof getItemDetails>>>();
   const [loadError, setLoadError] = useState(false);
+  const router = useRouter();
+  const navigation = useNavigation();
 
   useEffect(() => {
     let active = true;
@@ -57,9 +59,70 @@ function ItemDetails({ id }: { id: string }) {
               {item.path.length ? item.path.map((folder) => folder.name).join(' › ') : '보관 위치를 찾을 수 없어요.'}
             </Text>
           </View>
+          <DeleteItem itemId={item.id} itemName={item.name} onDeleted={() => {
+            setItem(null);
+            if (!navigation.isFocused()) return;
+            const root = item.path[0];
+            if (router.canGoBack()) router.back();
+            else router.replace({ pathname: '/storage', params: root ? { locationId: root.id } : {} });
+          }} />
         </>
       )}
     </ScrollView>
+  );
+}
+
+function DeleteItem({ itemId, itemName, onDeleted }: {
+  itemId: string;
+  itemName: string;
+  onDeleted: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(false);
+  const pending = useRef(false);
+
+  async function confirm() {
+    if (pending.current) return;
+    pending.current = true;
+    setBusy(true);
+    setError(false);
+    try {
+      await deleteItem(itemId);
+    } catch {
+      setError(true);
+      setBusy(false);
+      pending.current = false;
+      return;
+    }
+    onDeleted();
+  }
+
+  if (!confirming) {
+    return (
+      <Pressable accessibilityRole="button" onPress={() => setConfirming(true)} style={styles.changePhoto}>
+        <Text style={styles.deleteLabel}>물건 삭제</Text>
+      </Pressable>
+    );
+  }
+
+  return (
+    <View style={[styles.placeholder, styles.deletePanel]}>
+      <Text style={styles.label}>{itemName}을(를) 삭제할까요?</Text>
+      <Text style={screenStyles.body}>첨부 사진도 함께 삭제돼요.</Text>
+      {error && <Text accessibilityRole="alert" style={screenStyles.body}>물건을 삭제하지 못했어요. 다시 시도해 주세요.</Text>}
+      <View style={styles.photoActions}>
+        <Pressable accessibilityRole="button" disabled={busy} onPress={() => {
+          setConfirming(false);
+          setError(false);
+        }} style={styles.changePhoto}>
+          <Text style={styles.choiceLabel}>취소</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" disabled={busy} onPress={confirm} style={styles.changePhoto}>
+          <Text style={styles.deleteLabel}>{busy ? '삭제 중' : '물건 삭제 확인'}</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -67,10 +130,11 @@ function ItemPhoto({ itemId, itemName, previousPath, onSaved }: {
   itemId: string;
   itemName: string;
   previousPath: string | null;
-  onSaved: (path: string) => void;
+  onSaved: (path: string | null) => void;
 }) {
   const [photo, setPhoto] = useState<SelectedPhoto>();
   const [showSources, setShowSources] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [failedUri, setFailedUri] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -95,6 +159,15 @@ function ItemPhoto({ itemId, itemName, previousPath, onSaved }: {
 
   function choose(source: 'camera' | 'album') {
     return runPhotoAction(async () => setPhoto(await pickItemPhoto(source)));
+  }
+
+  function deletePhoto() {
+    if (!previousPath) return;
+    return runPhotoAction(async () => {
+      await removeItemPhoto(itemId, previousPath);
+      setConfirmDelete(false);
+      onSaved(null);
+    }, '사진을 삭제하지 못했어요. 다시 시도해 주세요.');
   }
 
   return (
@@ -182,10 +255,30 @@ function ItemPhoto({ itemId, itemName, previousPath, onSaved }: {
             </Pressable>
           )}
         </>
+      ) : confirmDelete ? (
+        <View style={styles.deletePanel}>
+          <Text style={screenStyles.body}>첨부 사진을 삭제할까요? 물건은 그대로 남아요.</Text>
+          <View style={styles.photoActions}>
+            <Pressable accessibilityRole="button" disabled={busy} onPress={() => {
+              setConfirmDelete(false);
+              setError(undefined);
+            }} style={styles.changePhoto}>
+              <Text style={styles.choiceLabel}>취소</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" disabled={busy} onPress={deletePhoto} style={styles.changePhoto}>
+              <Text style={styles.deleteLabel}>사진 삭제 확인</Text>
+            </Pressable>
+          </View>
+        </View>
       ) : (
-        <Pressable accessibilityRole="button" onPress={() => setShowSources(true)} style={styles.changePhoto}>
-          <Text style={styles.choiceLabel}>사진 바꾸기</Text>
-        </Pressable>
+        <View style={styles.photoActions}>
+          <Pressable accessibilityRole="button" onPress={() => setShowSources(true)} style={styles.changePhoto}>
+            <Text style={styles.choiceLabel}>사진 바꾸기</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={() => setConfirmDelete(true)} style={styles.changePhoto}>
+            <Text style={styles.deleteLabel}>사진 삭제</Text>
+          </Pressable>
+        </View>
       )}
       {error && <Text accessibilityRole="alert" style={screenStyles.body}>{error}</Text>}
     </View>
@@ -210,6 +303,9 @@ const styles = StyleSheet.create({
   },
   choiceLabel: { color: '#2D6654', fontSize: 14, fontWeight: '700', textAlign: 'center' },
   changePhoto: { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 },
+  photoActions: { flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 4 },
+  deletePanel: { gap: 4 },
+  deleteLabel: { color: colors.accent, fontSize: 14, fontWeight: '700' },
   previewBar: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   previewLabel: { flex: 1 },
   iconButton: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },

@@ -8,12 +8,14 @@ import HomeScreen from '../app/index';
 import ItemScreen from '../app/item/[id]';
 import StorageScreen from '../app/storage';
 import { createChildFolder, listRootFolders, renameFolder } from '../src/db/folders';
-import { attachItemPhoto, createItem, getItemDetails, listItems, renameItem, replaceItemPhoto } from '../src/db/items';
+import { attachItemPhoto, createItem, deleteItem, getItemDetails, listItems, removeItemPhoto, renameItem, replaceItemPhoto } from '../src/db/items';
 
 jest.mock('../src/db/items', () => ({
   createItem: jest.fn(),
   attachItemPhoto: jest.fn(),
   replaceItemPhoto: jest.fn(),
+  removeItemPhoto: jest.fn(),
+  deleteItem: jest.fn(),
   getItemDetails: jest.fn(),
   renameItem: jest.fn(),
   listItems: jest.fn(async () => []),
@@ -201,6 +203,52 @@ test('상세에서 사진 교체를 취소하거나 저장한다', async () => {
   await fireEvent.press(screen.getByRole('button', { name: '사진 저장' }));
   expect(replaceItemPhoto).toHaveBeenCalledWith('watch', 'images/old.jpg', asset);
   expect(await screen.findByLabelText('시계 사진')).toHaveProp('source', { uri: 'file:///documents/images/new.jpg' });
+});
+
+test('상세에서 확인한 뒤 첨부 사진만 삭제한다', async () => {
+  jest.mocked(getItemDetails).mockResolvedValueOnce({
+    id: 'watch', name: '시계', photoPath: 'images/watch.jpg', folderId: 'home',
+    path: [{ id: 'home', name: '우리 집' }],
+  });
+  jest.mocked(removeItemPhoto).mockResolvedValueOnce(undefined);
+  await renderRouter({ 'item/[id]': ItemScreen }, { initialUrl: '/item/watch' });
+
+  await fireEvent.press(await screen.findByRole('button', { name: '사진 삭제' }));
+  await fireEvent.press(screen.getByRole('button', { name: '취소' }));
+  expect(removeItemPhoto).not.toHaveBeenCalled();
+  expect(screen.getByLabelText('시계 사진')).toBeOnTheScreen();
+
+  await fireEvent.press(screen.getByRole('button', { name: '사진 삭제' }));
+  await fireEvent.press(screen.getByRole('button', { name: '사진 삭제 확인' }));
+  expect(removeItemPhoto).toHaveBeenCalledWith('watch', 'images/watch.jpg');
+  expect(await screen.findByRole('button', { name: '사진 찍기' })).toBeOnTheScreen();
+  expect(screen.queryByLabelText('시계 사진')).toBeNull();
+  expect(screen.getByRole('button', { name: '시계 이름 변경' })).toBeOnTheScreen();
+  expect(screen.getByText('우리 집')).toBeOnTheScreen();
+});
+
+test('물건 삭제를 확인하면 보관함 목록에서 사라진다', async () => {
+  const item = { id: 'watch', name: '시계', photoPath: 'images/watch.jpg' };
+  jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }]);
+  jest.mocked(listItems).mockResolvedValueOnce([item]);
+  jest.mocked(getItemDetails).mockResolvedValueOnce({
+    ...item, folderId: 'home', path: [{ id: 'home', name: '우리 집' }],
+  });
+  jest.mocked(deleteItem).mockResolvedValueOnce(undefined);
+  await renderRouter({ storage: StorageScreen, 'item/[id]': ItemScreen }, { initialUrl: '/storage' });
+
+  await fireEvent.press(await screen.findByRole('link', { name: '시계' }));
+  await fireEvent.press(await screen.findByRole('button', { name: '물건 삭제' }));
+  await fireEvent.press(screen.getByRole('button', { name: '취소' }));
+  expect(deleteItem).not.toHaveBeenCalled();
+  expect(screen).toHavePathname('/item/watch');
+
+  await fireEvent.press(screen.getByRole('button', { name: '물건 삭제' }));
+  await fireEvent.press(screen.getByRole('button', { name: '물건 삭제 확인' }));
+  expect(deleteItem).toHaveBeenCalledWith('watch');
+  expect(await screen.findByText('아직 등록된 물건이 없어요.')).toBeOnTheScreen();
+  expect(screen).toHavePathname('/storage');
+  expect(screen.queryByRole('link', { name: '시계' })).toBeNull();
 });
 
 test('목록에서 물건 상세를 열어 사진과 전체 보관 위치를 확인한다', async () => {

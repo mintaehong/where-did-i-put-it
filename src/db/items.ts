@@ -77,6 +77,33 @@ export async function replaceItemPhoto(itemId: string, previousPath: string, pho
   return saved.relativePath;
 }
 
+export async function removeItemPhoto(itemId: string, photoPath: string) {
+  const db = await getStorage();
+  const result = await db.runAsync(
+    'DELETE FROM item_images WHERE item_id = ? AND relative_path = ?',
+    itemId,
+    photoPath,
+  );
+  if (!result.changes) throw new Error('삭제할 사진을 찾을 수 없어요.');
+  discardStoredItemPhoto(photoPath);
+}
+
+export async function deleteItem(itemId: string) {
+  const db = await getStorage();
+  let photoPath: string | undefined;
+  await db.withExclusiveTransactionAsync(async (transaction) => {
+    const image = await transaction.getFirstAsync<{ relative_path: string }>(
+      'DELETE FROM item_images WHERE item_id = ? RETURNING relative_path',
+      itemId,
+    );
+    const result = await transaction.runAsync('DELETE FROM items WHERE id = ?', itemId);
+    if (!result.changes) throw new Error('삭제할 물건을 찾을 수 없어요.');
+    photoPath = image?.relative_path;
+  });
+
+  if (photoPath) discardStoredItemPhoto(photoPath);
+}
+
 export async function createItem(folderId: string, name: string, photo?: SelectedPhoto): Promise<Item> {
   const trimmed = name.trim();
   if (!trimmed) throw new Error('물건 이름을 입력해 주세요.');
