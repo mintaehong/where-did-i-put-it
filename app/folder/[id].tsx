@@ -4,8 +4,8 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 
 import ChildFolders from '../../src/ChildFolders';
 import FolderItems from '../../src/FolderItems';
-import RenameFolder from '../../src/RenameFolder';
-import { getFolderPath } from '../../src/db/folders';
+import EditableName from '../../src/EditableName';
+import { getFolderPath, renameFolder } from '../../src/db/folders';
 import { screenStyles } from '../../src/theme';
 
 export default function FolderScreen() {
@@ -55,7 +55,7 @@ export default function FolderScreen() {
             ))}
             <Text style={screenStyles.body}>{current.name}</Text>
           </View>
-          <RenameFolder key={`rename-${id}`} id={id} name={current.name} onSaved={(name) => {
+          <EditableName key={`rename-${id}`} id={id} name={current.name} inputLabel="새 폴더 이름" persistName={renameFolder} onSaved={(name) => {
             setResult((previous) => previous?.id === id && previous.path
               ? { id, path: previous.path.map((folder) => folder.id === id ? { ...folder, name } : folder) }
               : previous);

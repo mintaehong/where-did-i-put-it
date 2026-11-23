@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { renameFolder } from './db/folders';
 import { screenStyles } from './theme';
 
-export default function RenameFolder({ id, name, onSaved }: {
+export default function EditableName({ id, name, inputLabel, persistName, onSaved }: {
   id: string;
   name: string;
+  inputLabel: string;
+  persistName: (id: string, name: string) => Promise<void>;
   onSaved: (name: string) => void;
 }) {
   const [draft, setDraft] = useState<string>();
@@ -22,7 +23,7 @@ export default function RenameFolder({ id, name, onSaved }: {
     setSaving(true);
     setError(false);
     try {
-      await renameFolder(id, trimmed);
+      await persistName(id, trimmed);
       onSaved(trimmed);
       setDraft(undefined);
     } catch {
@@ -51,7 +52,7 @@ export default function RenameFolder({ id, name, onSaved }: {
     <View>
       <View style={styles.editRow}>
         <TextInput
-          accessibilityLabel="새 폴더 이름"
+          accessibilityLabel={inputLabel}
           autoFocus
           editable={!saving}
           value={draft}

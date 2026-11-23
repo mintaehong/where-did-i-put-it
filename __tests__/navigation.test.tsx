@@ -8,11 +8,13 @@ import HomeScreen from '../app/index';
 import ItemScreen from '../app/item/[id]';
 import StorageScreen from '../app/storage';
 import { createChildFolder, listRootFolders, renameFolder } from '../src/db/folders';
-import { createItem, getItemDetails, listItems } from '../src/db/items';
+import { attachItemPhoto, createItem, getItemDetails, listItems, renameItem } from '../src/db/items';
 
 jest.mock('../src/db/items', () => ({
   createItem: jest.fn(),
+  attachItemPhoto: jest.fn(),
   getItemDetails: jest.fn(),
+  renameItem: jest.fn(),
   listItems: jest.fn(async () => []),
 }));
 jest.mock('expo-image-picker', () => ({
@@ -156,6 +158,23 @@ test('앨범 사진을 미리 보고 물건과 함께 저장한다', async () =>
   expect(await screen.findByLabelText('시계 사진')).toHaveProp('source', { uri: 'file:///documents/images/watch.jpg' });
 });
 
+test('사진 없는 물건의 상세에서 사진을 추가한다', async () => {
+  const asset = { uri: 'file:///cache/passport.jpg', width: 100, height: 100 };
+  jest.mocked(getItemDetails).mockResolvedValueOnce({
+    id: 'passport', name: '여권', folderId: 'home', photoPath: null, path: [],
+  });
+  jest.mocked(launchImageLibraryAsync).mockResolvedValueOnce({ canceled: false, assets: [asset] });
+  jest.mocked(attachItemPhoto).mockResolvedValueOnce('images/passport.jpg');
+  await renderRouter({ 'item/[id]': ItemScreen }, { initialUrl: '/item/passport' });
+
+  await fireEvent.press(await screen.findByRole('button', { name: '앨범에서 사진 추가' }));
+  expect(await screen.findByLabelText('선택한 사진')).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: '사진 저장' }));
+  expect(attachItemPhoto).toHaveBeenCalledWith('passport', asset);
+  expect(await screen.findByLabelText('여권 사진')).toHaveProp('source', { uri: 'file:///documents/images/passport.jpg' });
+  expect(screen.queryByRole('button', { name: '사진 저장' })).toBeNull();
+});
+
 test('목록에서 물건 상세를 열어 사진과 전체 보관 위치를 확인한다', async () => {
   const item = { id: 'watch', name: '시계', photoPath: 'images/watch.jpg' };
   jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }]);
@@ -169,9 +188,20 @@ test('목록에서 물건 상세를 열어 사진과 전체 보관 위치를 확
 
   await fireEvent.press(await screen.findByRole('link', { name: '시계' }));
   expect(screen).toHavePathname('/item/watch');
-  expect(await screen.findByRole('header', { name: '시계' })).toBeOnTheScreen();
+  expect(await screen.findByRole('button', { name: '시계 이름 변경' })).toBeOnTheScreen();
   expect(screen.getByText('우리 집 › 안방 › 옷장')).toBeOnTheScreen();
   expect(screen.getByLabelText('시계 사진')).toHaveProp('source', { uri: 'file:///documents/images/watch.jpg' });
+
+  await fireEvent.press(screen.getByRole('button', { name: '시계 이름 변경' }));
+  await fireEvent.changeText(screen.getByLabelText('새 물건 이름'), ' 손목시계 ');
+  await fireEvent.press(screen.getByRole('button', { name: '이름 저장' }));
+  expect(renameItem).toHaveBeenCalledWith('watch', '손목시계');
+  expect(await screen.findByRole('button', { name: '손목시계 이름 변경' })).toBeOnTheScreen();
+  expect(screen.getByLabelText('손목시계 사진')).toHaveProp('source', { uri: 'file:///documents/images/watch.jpg' });
+
+  jest.mocked(listItems).mockResolvedValueOnce([{ ...item, name: '손목시계' }]);
+  await act(() => router.back());
+  expect(await screen.findByRole('link', { name: '손목시계' })).toBeOnTheScreen();
 });
 
 test('최상위 장소가 여러 개면 보관함 안에서 전환한다', async () => {

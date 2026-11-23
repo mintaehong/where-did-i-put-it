@@ -1,10 +1,10 @@
-import { launchCameraAsync, launchImageLibraryAsync, requestCameraPermissionsAsync } from 'expo-image-picker';
-import { Link } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { Link, useFocusEffect } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Button, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { createItem, listItems } from './db/items';
 import { itemPhotoUri, type SelectedPhoto } from './itemPhotoFiles';
+import { pickItemPhoto } from './pickItemPhoto';
 import { colors, screenStyles } from './theme';
 
 export default function FolderItems({ folderId }: { folderId: string }) {
@@ -19,14 +19,19 @@ export default function FolderItems({ folderId }: { folderId: string }) {
   const [photoError, setPhotoError] = useState<string>();
   const pending = useRef(false);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     let active = true;
     listItems(folderId).then(
-      (rows) => { if (active) setItems(rows); },
+      (rows) => {
+        if (active) {
+          setItems(rows);
+          setLoadError(false);
+        }
+      },
       () => { if (active) setLoadError(true); },
     );
     return () => { active = false; };
-  }, [folderId, attempt]);
+  }, [folderId, attempt]));
 
   async function choosePhoto(source: 'camera' | 'album') {
     if (pending.current) return;
@@ -34,20 +39,9 @@ export default function FolderItems({ folderId }: { folderId: string }) {
     setPicking(true);
     setPhotoError(undefined);
     try {
-      if (source === 'camera') {
-        const permission = await requestCameraPermissionsAsync();
-        if (!permission.granted) {
-          setPhotoError(permission.canAskAgain
-            ? '사진을 찍으려면 카메라 권한을 허용해 주세요.'
-            : '휴대폰 설정에서 카메라 권한을 허용해 주세요.');
-          return;
-        }
-      }
-      const pick = source === 'camera' ? launchCameraAsync : launchImageLibraryAsync;
-      const result = await pick({ mediaTypes: ['images'], exif: false });
-      if (!result.canceled) setPhoto(result.assets[0]);
-    } catch {
-      setPhotoError(source === 'camera'
+      setPhoto(await pickItemPhoto(source));
+    } catch (error) {
+      setPhotoError(error instanceof Error ? error.message : source === 'camera'
         ? '카메라를 열지 못했어요. 다시 시도해 주세요.'
         : '앨범을 열지 못했어요. 다시 시도해 주세요.');
     } finally {

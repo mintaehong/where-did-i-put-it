@@ -7,6 +7,7 @@ type Item = { id: string; name: string; photoPath: string | null };
 
 const itemColumns = 'items.id, items.name, item_images.relative_path AS photoPath';
 const itemTables = 'FROM items LEFT JOIN item_images ON item_images.item_id = items.id';
+const insertImage = 'INSERT INTO item_images (id, item_id, relative_path, mime_type, byte_size, created_at) VALUES (?, ?, ?, ?, ?, ?)';
 
 export async function listItems(folderId: string) {
   const db = await getStorage();
@@ -25,6 +26,36 @@ export async function getItemDetails(id: string) {
   if (!item) return null;
 
   return { ...item, path: await getFolderPath(item.folderId) };
+}
+
+export async function renameItem(id: string, name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('물건 이름을 입력해 주세요.');
+
+  const db = await getStorage();
+  const result = await db.runAsync(
+    'UPDATE items SET name = ?, updated_at = ? WHERE id = ?',
+    trimmed,
+    new Date().toISOString(),
+    id,
+  );
+  if (!result.changes) throw new Error('물건을 찾을 수 없어요.');
+}
+
+export async function attachItemPhoto(itemId: string, photo: SelectedPhoto) {
+  const db = await getStorage();
+  const imageId = randomUUID();
+  const saved = await copyItemPhoto(photo, imageId);
+  try {
+    await db.runAsync(
+      insertImage,
+      imageId, itemId, saved.relativePath, photo.mimeType ?? null, saved.size, new Date().toISOString(),
+    );
+    return saved.relativePath;
+  } catch (error) {
+    discardItemPhoto(saved.file);
+    throw error;
+  }
 }
 
 export async function createItem(folderId: string, name: string, photo?: SelectedPhoto): Promise<Item> {
@@ -50,7 +81,7 @@ export async function createItem(folderId: string, name: string, photo?: Selecte
       const result = await transaction.runAsync(insertItem, params);
       if (!result.changes) throw new Error('보관 위치를 찾을 수 없어요.');
       await transaction.runAsync(
-        'INSERT INTO item_images (id, item_id, relative_path, mime_type, byte_size, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        insertImage,
         imageId, item.id, saved.relativePath, photo.mimeType ?? null, saved.size, now,
       );
     });

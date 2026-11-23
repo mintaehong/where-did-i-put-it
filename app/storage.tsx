@@ -4,8 +4,8 @@ import { ActivityIndicator, Button, Pressable, ScrollView, StyleSheet, Text, Vie
 
 import ChildFolders from '../src/ChildFolders';
 import FolderItems from '../src/FolderItems';
-import RenameFolder from '../src/RenameFolder';
-import { listRootFolders } from '../src/db/folders';
+import EditableName from '../src/EditableName';
+import { listRootFolders, renameFolder } from '../src/db/folders';
 import { colors, screenStyles } from '../src/theme';
 
 type FolderList =
@@ -38,7 +38,7 @@ export default function StorageScreen() {
   return (
     <ScrollView contentContainerStyle={screenStyles.content} keyboardShouldPersistTaps="handled">
       {selected ? (
-        <RenameFolder key={`rename-${selected.id}`} id={selected.id} name={selected.name} onSaved={(name) => {
+        <EditableName key={`rename-${selected.id}`} id={selected.id} name={selected.name} inputLabel="새 폴더 이름" persistName={renameFolder} onSaved={(name) => {
           setResult((previous) => previous.status === 'ready'
             ? { status: 'ready', folders: previous.folders.map((folder) => (
               folder.id === selected.id ? { ...folder, name } : folder
