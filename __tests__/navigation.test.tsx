@@ -1,6 +1,6 @@
 import { launchCameraAsync, launchImageLibraryAsync, PermissionStatus, requestCameraPermissionsAsync } from 'expo-image-picker';
 import { router } from 'expo-router';
-import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
 
 import RootLayout from '../app/_layout';
 import FolderScreen from '../app/folder/[id]';
@@ -341,6 +341,14 @@ test('목록에서 물건 상세를 열어 사진과 전체 보관 위치를 확
   });
   await renderRouter({ 'folder/[id]': FolderScreen, 'item/[id]': ItemScreen }, { initialUrl: '/folder/closet' });
 
+  expect(await screen.findByRole('button', { name: '카드 보기', selected: true })).toBeOnTheScreen();
+  expect(screen.getByText('시계')).toHaveProp('numberOfLines', 2);
+  await fireEvent.press(screen.getByRole('button', { name: '목록 보기' }));
+  expect(screen.getByRole('button', { name: '목록 보기', selected: true })).toBeOnTheScreen();
+  expect(screen.getByText('시계')).toHaveProp('numberOfLines', 1);
+  await fireEvent.press(screen.getByRole('button', { name: '카드 보기' }));
+  expect(screen.getByRole('button', { name: '카드 보기', selected: true })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: '목록 보기' }));
   await fireEvent.press(await screen.findByRole('link', { name: '시계' }));
   expect(screen).toHavePathname('/item/watch');
   expect(await screen.findByRole('button', { name: '시계 이름 변경' })).toBeOnTheScreen();
@@ -357,6 +365,39 @@ test('목록에서 물건 상세를 열어 사진과 전체 보관 위치를 확
   jest.mocked(listItems).mockResolvedValueOnce([{ ...item, name: '손목시계' }]);
   await act(() => router.back());
   expect(await screen.findByRole('link', { name: '손목시계' })).toBeOnTheScreen();
+});
+
+test('카드는 물건 수만큼 표시하고 목록은 이름 오른쪽에 사진을 표시한다', async () => {
+  jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }]);
+  jest.mocked(listItems).mockResolvedValueOnce([
+    { id: 'watch', name: '시계', photoPath: 'images/watch.jpg' },
+    { id: 'passport', name: '여권', photoPath: null },
+  ]);
+  await renderRouter({ storage: StorageScreen }, { initialUrl: '/storage' });
+
+  const rows = await screen.findAllByTestId('item-card-row');
+  expect(rows).toHaveLength(1);
+  expect(within(rows[0]).getByRole('link', { name: '시계' })).toBeOnTheScreen();
+  expect(within(rows[0]).getByRole('link', { name: '여권' })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: '목록 보기' }));
+  const name = screen.getByText('시계');
+  const photo = screen.getByLabelText('시계 사진');
+  expect(name.parent).toBe(photo.parent);
+  expect(name.parent?.children.indexOf(name)).toBeLessThan(name.parent?.children.indexOf(photo) ?? -1);
+});
+
+test('물건이 네 개를 넘으면 카드 보기에서 옆으로 넘길 수 있다', async () => {
+  jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }]);
+  jest.mocked(listItems).mockResolvedValueOnce(Array.from({ length: 5 }, (_, index) => ({
+    id: `item-${index}`, name: `물건 ${index + 1}`, photoPath: null,
+  })));
+  await renderRouter({ storage: StorageScreen }, { initialUrl: '/storage' });
+
+  expect(await screen.findByText(/옆으로 넘겨 더 보기/)).toBeOnTheScreen();
+  expect(screen.getByRole('link', { name: '물건 5' })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: '목록 보기' }));
+  expect(screen.queryByText(/옆으로 넘겨 더 보기/)).toBeNull();
+  expect(screen.getAllByRole('link', { name: /^물건 \d/ })).toHaveLength(5);
 });
 
 test('최상위 장소가 여러 개면 보관함 안에서 전환한다', async () => {
