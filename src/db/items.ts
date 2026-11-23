@@ -18,6 +18,13 @@ export async function listItems(folderId: string) {
   );
 }
 
+export async function listRecentItems() {
+  const db = await getStorage();
+  return db.getAllAsync<Item>(
+    `SELECT ${itemColumns} ${itemTables} ORDER BY items.created_at DESC, items.id DESC LIMIT 4`,
+  );
+}
+
 export async function getItemDetails(id: string) {
   const db = await getStorage();
   const item = await db.getFirstAsync<Item & { folderId: string }>(

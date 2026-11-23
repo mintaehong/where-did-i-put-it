@@ -4,6 +4,8 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 
 import EditableName from '../src/EditableName';
 import { createRootFolder, listRootFolders, renameFolder } from '../src/db/folders';
+import { listRecentItems } from '../src/db/items';
+import { ItemCollection } from '../src/FolderItems';
 import ItemSearch from '../src/ItemSearch';
 import { colors, screenStyles } from '../src/theme';
 
@@ -16,7 +18,37 @@ export default function HomeScreen() {
       <Text style={styles.description}>소중한 물건들, 여기 차곡차곡 모아두자.</Text>
       <ItemSearch mode="question" />
       <HomePlaces />
+      <RecentItems />
     </ScrollView>
+  );
+}
+
+function RecentItems() {
+  const [items, setItems] = useState<Awaited<ReturnType<typeof listRecentItems>> | null>();
+  const [attempt, setAttempt] = useState(0);
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    listRecentItems().then(
+      (rows) => { if (active) setItems(rows); },
+      () => { if (active) setItems(null); },
+    );
+    return () => { active = false; };
+  }, [attempt]));
+
+  if (items === undefined || items?.length === 0) return null;
+
+  return (
+    <View style={styles.places}>
+      <Text accessibilityRole="header" style={styles.sectionTitle}>최근 추가한 물건</Text>
+      {items === null ? (
+        <Pressable accessibilityRole="button" onPress={() => setAttempt((value) => value + 1)}>
+          <Text style={styles.link}>최근 물건 다시 불러오기</Text>
+        </Pressable>
+      ) : (
+        <ItemCollection items={items} isList={false} />
+      )}
+    </View>
   );
 }
 

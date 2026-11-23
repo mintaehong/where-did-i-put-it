@@ -8,7 +8,7 @@ import HomeScreen from '../app/index';
 import ItemScreen from '../app/item/[id]';
 import StorageScreen from '../app/storage';
 import { createChildFolder, createRootFolder, listRootFolders, renameFolder } from '../src/db/folders';
-import { askForItems, attachItemPhoto, createItem, deleteItem, getItemDetails, listItems, moveItem, removeItemPhoto, renameItem, replaceItemPhoto, searchItems } from '../src/db/items';
+import { askForItems, attachItemPhoto, createItem, deleteItem, getItemDetails, listItems, listRecentItems, moveItem, removeItemPhoto, renameItem, replaceItemPhoto, searchItems } from '../src/db/items';
 
 jest.mock('../src/db/items', () => ({
   createItem: jest.fn(),
@@ -22,6 +22,7 @@ jest.mock('../src/db/items', () => ({
   askForItems: jest.fn(),
   renameItem: jest.fn(),
   listItems: jest.fn(async () => []),
+  listRecentItems: jest.fn(async () => []),
 }));
 jest.mock('expo-image-picker', () => ({
   launchCameraAsync: jest.fn(),
@@ -401,6 +402,24 @@ test('물건이 네 개를 넘으면 카드 보기에서 옆으로 넘길 수 �
   await fireEvent.press(screen.getByRole('button', { name: '목록 보기' }));
   expect(screen.queryByText(/옆으로 넘겨 더 보기/)).toBeNull();
   expect(screen.getAllByRole('link', { name: /^물건 \d/ })).toHaveLength(5);
+});
+
+test('홈에서 최근 추가한 물건을 열고 돌아오면 목록이 갱신된다', async () => {
+  const home = { id: 'home', name: '우리 집' };
+  const item = { id: 'watch', name: '시계', photoPath: 'images/watch.jpg' };
+  jest.mocked(listRootFolders).mockResolvedValue([home]);
+  jest.mocked(listRecentItems)
+    .mockResolvedValueOnce([item])
+    .mockResolvedValueOnce([{ id: 'passport', name: '여권', photoPath: null }, item]);
+  jest.mocked(getItemDetails).mockResolvedValueOnce({ ...item, folderId: home.id, path: [home] });
+  await renderRouter({ index: HomeScreen, 'item/[id]': ItemScreen });
+
+  expect(await screen.findByRole('header', { name: '최근 추가한 물건' })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('link', { name: '시계' }));
+  expect(screen).toHavePathname('/item/watch');
+  expect(await screen.findByLabelText('시계 사진')).toBeOnTheScreen();
+  await act(() => router.back());
+  expect(await screen.findByRole('link', { name: '여권' })).toBeOnTheScreen();
 });
 
 test('홈의 장소를 누르면 해당 장소가 선택된 보관함을 연다', async () => {

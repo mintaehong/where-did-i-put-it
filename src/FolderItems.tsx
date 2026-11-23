@@ -188,7 +188,7 @@ export default function FolderItems({ folderId }: { folderId: string }) {
   );
 }
 
-function ItemCollection({ items, isList }: {
+export function ItemCollection({ items, isList }: {
   items: Awaited<ReturnType<typeof listItems>>;
   isList: boolean;
 }) {
