@@ -39,8 +39,8 @@ test('선택한 장소에 하위 폴더를 저장하고 목록에 표시한다',
   jest.mocked(createChildFolder).mockResolvedValue({ id: 'closet', name: '옷장' });
   await renderRouter({ storage: StorageScreen }, { initialUrl: '/storage' });
 
-  await fireEvent.press(await screen.findByRole('button', { name: '폴더 추가' }));
-  const input = screen.getByLabelText('폴더 이름');
+  await fireEvent.press(await screen.findByRole('button', { name: '보관 위치 추가' }));
+  const input = screen.getByLabelText('보관 위치 이름');
   expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
   await fireEvent.changeText(input, '  옷장  ');
   await fireEvent.press(screen.getByRole('button', { name: '저장' }));
@@ -74,8 +74,8 @@ test('보관함에서 우리 집을 거치지 않고 안방을 연다', async ()
   expect(await screen.findByRole('button', { name: '침실 이름 변경' })).toBeOnTheScreen();
 
   jest.mocked(createChildFolder).mockResolvedValue({ id: 'closet', name: '옷장' });
-  await fireEvent.press(await screen.findByRole('button', { name: '폴더 추가' }));
-  await fireEvent.changeText(screen.getByLabelText('폴더 이름'), '옷장');
+  await fireEvent.press(await screen.findByRole('button', { name: '보관 위치 추가' }));
+  await fireEvent.changeText(screen.getByLabelText('보관 위치 이름'), '옷장');
   await fireEvent.press(screen.getByRole('button', { name: '저장' }));
   expect(createChildFolder).toHaveBeenCalledWith('bedroom', '옷장');
 

@@ -78,8 +78,8 @@ export default function StorageScreen() {
       )}
       {selected && (
         <>
-          <ChildFolders key={selected.id} parentId={selected.id} />
           <FolderItems key={`items-${selected.id}`} folderId={selected.id} />
+          <ChildFolders key={selected.id} parentId={selected.id} />
         </>
       )}
     </ScrollView>

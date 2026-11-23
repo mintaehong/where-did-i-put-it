@@ -60,8 +60,8 @@ export default function FolderScreen() {
               ? { id, path: previous.path.map((folder) => folder.id === id ? { ...folder, name } : folder) }
               : previous);
           }} />
-          <ChildFolders key={id} parentId={id} />
           <FolderItems key={`items-${id}`} folderId={id} />
+          <ChildFolders key={id} parentId={id} />
         </>
       ) : (
         <Text style={screenStyles.body}>
