@@ -64,7 +64,15 @@ export async function listChildFolders(parentId: string) {
   );
 }
 
-export async function createChildFolder(parentId: string, name: string) {
+export function createChildFolder(parentId: string, name: string) {
+  return createFolder(parentId, name);
+}
+
+export function createRootFolder(name: string) {
+  return createFolder(null, name);
+}
+
+async function createFolder(parentId: string | null, name: string) {
   const folder = { id: randomUUID(), name: name.trim() };
   if (!folder.name) throw new Error('폴더 이름을 입력해 주세요.');
 

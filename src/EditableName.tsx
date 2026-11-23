@@ -1,16 +1,19 @@
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type TextStyle } from 'react-native';
 
 import { screenStyles } from './theme';
 
-export default function EditableName({ id, name, inputLabel, persistName, onSaved }: {
+export default function EditableName({ id, name, inputLabel, inputStyle, persistName, onSaved, startEditing, onCancel }: {
   id: string;
   name: string;
   inputLabel: string;
+  inputStyle?: StyleProp<TextStyle>;
   persistName: (id: string, name: string) => Promise<void>;
   onSaved: (name: string) => void;
+  startEditing?: boolean;
+  onCancel?: () => void;
 }) {
-  const [draft, setDraft] = useState<string>();
+  const [draft, setDraft] = useState(startEditing ? name : undefined);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
   const pending = useRef(false);
@@ -59,7 +62,7 @@ export default function EditableName({ id, name, inputLabel, persistName, onSave
           onChangeText={setDraft}
           onSubmitEditing={save}
           returnKeyType="done"
-          style={[screenStyles.heading, styles.input]}
+          style={[screenStyles.heading, styles.input, inputStyle]}
         />
         <Pressable
           accessibilityRole="button"
@@ -81,6 +84,7 @@ export default function EditableName({ id, name, inputLabel, persistName, onSave
           onPress={() => {
             setDraft(undefined);
             setError(false);
+            onCancel?.();
           }}
           style={({ pressed }) => [
             styles.iconButton,

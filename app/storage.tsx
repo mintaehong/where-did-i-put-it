@@ -1,13 +1,12 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Button, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Button, ScrollView, Text } from 'react-native';
 
 import ChildFolders from '../src/ChildFolders';
 import FolderItems from '../src/FolderItems';
-import EditableName from '../src/EditableName';
 import ItemSearch from '../src/ItemSearch';
-import { listRootFolders, renameFolder } from '../src/db/folders';
-import { colors, screenStyles } from '../src/theme';
+import { listRootFolders } from '../src/db/folders';
+import { screenStyles } from '../src/theme';
 
 type FolderList =
   | { status: 'loading' | 'error' }
@@ -17,7 +16,6 @@ export default function StorageScreen() {
   const [result, setResult] = useState<FolderList>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const { locationId: selectedId } = useLocalSearchParams<{ locationId?: string }>();
-  const router = useRouter();
   const roots = result.status === 'ready' ? result.folders : [];
   const selected = roots.find((folder) => folder.id === selectedId) ?? roots[0];
 
@@ -39,17 +37,7 @@ export default function StorageScreen() {
   return (
     <ScrollView contentContainerStyle={screenStyles.content} keyboardShouldPersistTaps="handled">
       <ItemSearch mode="search" />
-      {selected ? (
-        <EditableName key={`rename-${selected.id}`} id={selected.id} name={selected.name} inputLabel="새 폴더 이름" persistName={renameFolder} onSaved={(name) => {
-          setResult((previous) => previous.status === 'ready'
-            ? { status: 'ready', folders: previous.folders.map((folder) => (
-              folder.id === selected.id ? { ...folder, name } : folder
-            )) }
-            : previous);
-        }} />
-      ) : (
-        <Text accessibilityRole="header" style={screenStyles.heading}>보관 장소</Text>
-      )}
+      <Text accessibilityRole="header" style={screenStyles.heading}>{selected?.name ?? '보관 장소'}</Text>
       {result.status === 'loading' && <ActivityIndicator accessibilityLabel="보관함 불러오는 중" />}
       {result.status === 'error' && (
         <>
@@ -59,21 +47,6 @@ export default function StorageScreen() {
             setAttempt((previous) => previous + 1);
           }} />
         </>
-      )}
-      {roots.length > 1 && (
-        <View style={styles.locations}>
-          {roots.map((folder) => (
-            <Pressable
-              key={folder.id}
-              accessibilityRole="button"
-              accessibilityState={{ selected: folder.id === selected?.id }}
-              onPress={() => router.setParams({ locationId: folder.id })}
-              style={[styles.location, folder.id === selected?.id && styles.selectedLocation]}
-            >
-              <Text style={screenStyles.body}>{folder.name}</Text>
-            </Pressable>
-          ))}
-        </View>
       )}
       {result.status === 'ready' && !selected && (
         <Text style={screenStyles.body}>아직 등록된 보관 장소가 없어요.</Text>
@@ -87,20 +60,3 @@ export default function StorageScreen() {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  locations: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  location: {
-    borderRadius: 16,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  selectedLocation: {
-    backgroundColor: '#DFEDE3',
-  },
-});
