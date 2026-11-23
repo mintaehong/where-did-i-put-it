@@ -336,6 +336,27 @@ test('말하듯 물으면 실제 위치를 답하고 물건 이름이 없으면 
   expect(screen.queryByText('우리 집 › 옷장')).toBeNull();
 });
 
+test.each([
+  { folderId: 'home', path: [{ id: 'home', name: '우리 집' }], route: '/storage', name: '우리 집' },
+  { folderId: 'closet', path: [{ id: 'home', name: '우리 집' }, { id: 'closet', name: '옷장' }], route: '/folder/closet', name: '옷장' },
+])('물건 상세에서 보관 위치를 바로 연다 ($name)', async ({ folderId, path, route, name }) => {
+  jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }]);
+  jest.mocked(getItemDetails).mockResolvedValueOnce({
+    id: 'watch', name: '시계', photoPath: null, note: null, folderId, path,
+  });
+  await renderRouter({
+    storage: StorageScreen, 'folder/[id]': FolderScreen, 'item/[id]': ItemScreen,
+  }, { initialUrl: '/item/watch' });
+
+  await fireEvent.press(await screen.findByRole('link', { name: /위치 열기/ }));
+  expect(screen).toHavePathname(route);
+  if (folderId === 'home') {
+    expect(await screen.findByRole('header', { name })).toBeOnTheScreen();
+  } else {
+    expect(await screen.findByRole('button', { name: name + ' 이름 변경' })).toBeOnTheScreen();
+  }
+});
+
 test('목록에서 물건 상세를 열어 사진과 전체 보관 위치를 확인한다', async () => {
   const item = { id: 'watch', name: '시계', photoPath: 'images/watch.jpg' };
   jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }]);

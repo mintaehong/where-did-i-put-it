@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -18,23 +19,35 @@ export default function ItemLocation({ itemId, folderId, path, onMoved }: {
   onMoved: (folder: Location, path: Location[]) => void;
 }) {
   const [destination, setDestination] = useState<Location[]>();
+  const locationHref = path.length === 0 ? null : path.length === 1
+    ? { pathname: '/storage' as const, params: { locationId: folderId } }
+    : { pathname: '/folder/[id]' as const, params: { id: folderId } };
 
   return (
     <View style={styles.card}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="보관 위치 바꾸기"
-        accessibilityState={{ expanded: destination !== undefined }}
-        onPress={() => setDestination((current) => current ? undefined : path.slice(0, -1))}
-        disabled={destination !== undefined}
-        style={styles.titleRow}
-      >
-        <View style={styles.titleText}>
-          <Text style={styles.label}>보관 위치</Text>
-          <Text style={screenStyles.body}>{pathLabel(path) || '보관 위치를 찾을 수 없어요.'}</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.label}>보관 위치</Text>
+        <Text style={screenStyles.body}>{pathLabel(path) || '보관 위치를 찾을 수 없어요.'}</Text>
+      </View>
+      {destination === undefined && (
+        <View style={styles.actions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="보관 위치 바꾸기"
+            onPress={() => setDestination(path.slice(0, -1))}
+            style={styles.row}
+          >
+            <Text style={styles.action}>바꾸기</Text>
+          </Pressable>
+          {locationHref && (
+            <Link href={locationHref} asChild>
+              <Pressable accessibilityRole="link" style={styles.openLocation}>
+                <Text style={styles.action}>위치 열기 ›</Text>
+              </Pressable>
+            </Link>
+          )}
         </View>
-        {destination === undefined && <Text style={styles.action}>바꾸기 ›</Text>}
-      </Pressable>
+      )}
       {destination && (
         <LocationPicker
           itemId={itemId}
@@ -141,12 +154,12 @@ function LocationPicker({ itemId, folderId, path, onBrowse, onCancel, onSaved }:
 
 const styles = StyleSheet.create({
   card: { backgroundColor: '#DFEDE3', borderRadius: 16, padding: 16, gap: 12 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44 },
-  titleText: { flex: 1, gap: 6 },
+  titleRow: { gap: 6, minHeight: 44 },
   label: { color: colors.text, fontSize: 16, fontWeight: '700' },
   action: { color: '#2D6654', fontSize: 14, fontWeight: '700' },
   picker: { gap: 6, backgroundColor: '#F2F7F2', borderRadius: 12, padding: 12 },
   row: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 },
+  openLocation: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 10, backgroundColor: '#F2F7F2', borderRadius: 10 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8 },
   save: { backgroundColor: '#2D6654', borderRadius: 10 },
   saveText: { color: '#FFFFFF', fontWeight: '700' },
