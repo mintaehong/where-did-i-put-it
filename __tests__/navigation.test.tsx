@@ -5,12 +5,14 @@ import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-librar
 import RootLayout from '../app/_layout';
 import FolderScreen from '../app/folder/[id]';
 import HomeScreen from '../app/index';
+import ItemScreen from '../app/item/[id]';
 import StorageScreen from '../app/storage';
 import { createChildFolder, listRootFolders, renameFolder } from '../src/db/folders';
-import { createItem, listItems } from '../src/db/items';
+import { createItem, getItemDetails, listItems } from '../src/db/items';
 
 jest.mock('../src/db/items', () => ({
   createItem: jest.fn(),
+  getItemDetails: jest.fn(),
   listItems: jest.fn(async () => []),
 }));
 jest.mock('expo-image-picker', () => ({
@@ -83,7 +85,10 @@ test('선택한 장소에 하위 폴더를 저장하고 목록에 표시한다',
 
 test('보관함에서 우리 집을 거치지 않고 안방을 연다', async () => {
   jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }]);
-  await renderRouter({ _layout: RootLayout, index: HomeScreen, storage: StorageScreen, 'folder/[id]': FolderScreen });
+  await renderRouter({
+    _layout: RootLayout, index: HomeScreen, storage: StorageScreen,
+    'folder/[id]': FolderScreen, 'item/[id]': ItemScreen,
+  });
 
   expect(screen.getByText(/엄마가 기억해 줄게/)).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('link', { name: '보관함 열기' }));
@@ -149,6 +154,24 @@ test('앨범 사진을 미리 보고 물건과 함께 저장한다', async () =>
 
   expect(createItem).toHaveBeenCalledWith('home', '시계', asset);
   expect(await screen.findByLabelText('시계 사진')).toHaveProp('source', { uri: 'file:///documents/images/watch.jpg' });
+});
+
+test('목록에서 물건 상세를 열어 사진과 전체 보관 위치를 확인한다', async () => {
+  const item = { id: 'watch', name: '시계', photoPath: 'images/watch.jpg' };
+  jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }]);
+  jest.mocked(listItems).mockResolvedValueOnce([item]);
+  jest.mocked(getItemDetails).mockResolvedValueOnce({
+    ...item,
+    folderId: 'closet',
+    path: [{ id: 'home', name: '우리 집' }, { id: 'bedroom', name: '안방' }, { id: 'closet', name: '옷장' }],
+  });
+  await renderRouter({ 'folder/[id]': FolderScreen, 'item/[id]': ItemScreen }, { initialUrl: '/folder/closet' });
+
+  await fireEvent.press(await screen.findByRole('link', { name: '시계' }));
+  expect(screen).toHavePathname('/item/watch');
+  expect(await screen.findByRole('header', { name: '시계' })).toBeOnTheScreen();
+  expect(screen.getByText('우리 집 › 안방 › 옷장')).toBeOnTheScreen();
+  expect(screen.getByLabelText('시계 사진')).toHaveProp('source', { uri: 'file:///documents/images/watch.jpg' });
 });
 
 test('최상위 장소가 여러 개면 보관함 안에서 전환한다', async () => {

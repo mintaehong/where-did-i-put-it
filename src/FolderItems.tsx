@@ -1,4 +1,5 @@
 import { launchCameraAsync, launchImageLibraryAsync, requestCameraPermissionsAsync } from 'expo-image-picker';
+import { Link } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Button, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
@@ -90,20 +91,41 @@ export default function FolderItems({ folderId }: { folderId: string }) {
         <ActivityIndicator accessibilityLabel="물건 불러오는 중" />
       ) : (
         <>
-          {items.length === 0 && <Text style={screenStyles.body}>아직 등록된 물건이 없어요.</Text>}
-          {items.map((item) => (
-            <View key={item.id} style={[styles.item, styles.row]}>
-              {item.photoPath && (
-                <Image
-                  accessibilityLabel={`${item.name} 사진`}
-                  accessible
-                  source={{ uri: itemPhotoUri(item.photoPath) }}
-                  style={styles.thumbnail}
-                />
-              )}
-              <Text style={styles.itemName}>{item.name}</Text>
+          {items.length === 0 ? (
+            <View style={styles.empty}>
+              <Text style={screenStyles.body}>아직 등록된 물건이 없어요.</Text>
             </View>
-          ))}
+          ) : (
+            <View style={styles.itemGrid}>
+              {items.map((item) => (
+                <Link key={item.id} href={{ pathname: '/item/[id]', params: { id: item.id } }} asChild>
+                  <Pressable
+                    accessibilityRole="link"
+                    accessibilityLabel={item.name}
+                    style={({ pressed }) => [styles.itemCard, pressed && styles.cardPressed]}
+                  >
+                    {item.photoPath ? (
+                      <Image
+                        accessibilityLabel={`${item.name} 사진`}
+                        accessible
+                        source={{ uri: itemPhotoUri(item.photoPath) }}
+                        resizeMode="cover"
+                        style={styles.cardMedia}
+                      />
+                    ) : (
+                      <View style={[styles.cardMedia, styles.cardPlaceholder]} accessible={false}>
+                        <Text style={styles.placeholderIcon}>📦</Text>
+                      </View>
+                    )}
+                    <View style={styles.cardCaption}>
+                      <Text numberOfLines={2} style={styles.cardName}>{item.name}</Text>
+                      <Text style={styles.chevron}>›</Text>
+                    </View>
+                  </Pressable>
+                </Link>
+              ))}
+            </View>
+          )}
           {draft === undefined ? (
             <Button title="물건 추가" onPress={() => setDraft('')} />
           ) : (
@@ -218,10 +240,30 @@ const styles = StyleSheet.create({
   photoPressed: { backgroundColor: '#DFEDE3' },
   photoAction: { color: '#2D6654', fontSize: 14, fontWeight: '700', textAlign: 'center' },
   heading: { color: colors.text, fontSize: 18, fontWeight: '700' },
-  item: { backgroundColor: colors.surface, borderRadius: 12, color: colors.text, fontSize: 16, padding: 12 },
+  empty: {
+    borderRadius: 14,
+    backgroundColor: '#F1F3EA',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  itemGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 },
+  itemCard: {
+    width: '48%',
+    backgroundColor: colors.surface,
+    borderColor: '#E0E7DE',
+    borderWidth: 1,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  cardPressed: { opacity: 0.78 },
+  cardMedia: { width: '100%', aspectRatio: 4 / 3, backgroundColor: '#E8EFE8' },
+  cardPlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  placeholderIcon: { fontSize: 30, opacity: 0.8 },
+  cardCaption: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 46, padding: 10 },
+  cardName: { color: colors.text, flex: 1, fontSize: 15, fontWeight: '700' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   itemName: { color: colors.text, fontSize: 16, flexShrink: 1 },
-  thumbnail: { width: 48, height: 48, borderRadius: 8, backgroundColor: '#E8EFE8' },
+  chevron: { color: '#5B7567', fontSize: 18 },
   preview: { width: 80, height: 80, borderRadius: 12, backgroundColor: '#E8EFE8' },
   removePhoto: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
 });

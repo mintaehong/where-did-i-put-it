@@ -1,18 +1,30 @@
 import { randomUUID } from 'expo-crypto';
 
 import { copyItemPhoto, discardItemPhoto, type SelectedPhoto } from '../itemPhotoFiles';
-import { getStorage } from './folders';
+import { getFolderPath, getStorage } from './folders';
 
 type Item = { id: string; name: string; photoPath: string | null };
+
+const itemColumns = 'items.id, items.name, item_images.relative_path AS photoPath';
+const itemTables = 'FROM items LEFT JOIN item_images ON item_images.item_id = items.id';
 
 export async function listItems(folderId: string) {
   const db = await getStorage();
   return db.getAllAsync<Item>(
-    `SELECT items.id, items.name, item_images.relative_path AS photoPath
-     FROM items LEFT JOIN item_images ON item_images.item_id = items.id
-     WHERE items.folder_id = ? ORDER BY items.created_at, items.id`,
+    `SELECT ${itemColumns} ${itemTables} WHERE items.folder_id = ? ORDER BY items.created_at, items.id`,
     folderId,
   );
+}
+
+export async function getItemDetails(id: string) {
+  const db = await getStorage();
+  const item = await db.getFirstAsync<Item & { folderId: string }>(
+    `SELECT ${itemColumns}, items.folder_id AS folderId ${itemTables} WHERE items.id = ?`,
+    id,
+  );
+  if (!item) return null;
+
+  return { ...item, path: await getFolderPath(item.folderId) };
 }
 
 export async function createItem(folderId: string, name: string, photo?: SelectedPhoto): Promise<Item> {
