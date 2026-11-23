@@ -15,15 +15,6 @@ export default function HomeScreen() {
       </Text>
       <Text style={styles.description}>소중한 물건들, 여기 차곡차곡 모아두자.</Text>
       <ItemSearch mode="question" />
-      <View style={styles.memo}>
-        <View style={styles.memoCopy}>
-          <Text style={styles.memoLabel}>엄마의 보관 노트</Text>
-          <Text style={styles.memoTitle}>물건을 어디에 뒀는지 적어 두자~</Text>
-        </View>
-        <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.illustration}>
-          <Text style={styles.box}>📦</Text>
-        </View>
-      </View>
       <HomePlaces />
     </ScrollView>
   );
@@ -194,41 +185,6 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     marginTop: 9,
     marginBottom: 24,
-  },
-  memo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#D9EDE1',
-    borderRadius: 20,
-    minHeight: 116,
-    padding: 20,
-  },
-  memoCopy: {
-    flex: 1,
-  },
-  memoLabel: {
-    color: '#416754',
-    fontSize: 12,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  memoTitle: {
-    color: '#263B36',
-    fontSize: 17,
-    lineHeight: 25,
-    fontWeight: '800',
-  },
-  illustration: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#E8F3EB',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  box: {
-    fontSize: 35,
   },
   places: {
     marginTop: 24,

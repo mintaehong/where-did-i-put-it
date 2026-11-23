@@ -43,7 +43,7 @@ export default function ItemSearch({ mode }: { mode: 'question' | 'search' }) {
   }
 
   return (
-    <View style={[styles.section, isQuestion && styles.questionSection]}>
+    <View style={styles.section}>
       <View style={styles.searchBar}>
         <TextInput
           accessibilityLabel={isQuestion ? '엄마에게 물어보기' : '물건 이름 검색'}
@@ -127,7 +127,6 @@ function answerFor(items: Awaited<ReturnType<typeof askForItems>>) {
 
 const styles = StyleSheet.create({
   section: { gap: 12 },
-  questionSection: { marginBottom: 16 },
   searchBar: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 4, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: '#DEE7DE' },
   input: { flex: 1, minWidth: 0, minHeight: 44, paddingHorizontal: 10, fontSize: 16, color: colors.text },
   clearButton: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
