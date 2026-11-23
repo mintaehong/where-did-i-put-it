@@ -166,16 +166,19 @@ export async function deleteItem(itemId: string) {
   if (photoPath) discardStoredItemPhoto(photoPath);
 }
 
-export async function createItem(folderId: string, name: string, photo?: SelectedPhoto): Promise<Item> {
+export async function createItem(folderId: string, name: string, { photo, note }: {
+  photo?: SelectedPhoto;
+  note?: string;
+} = {}): Promise<Item> {
   const trimmed = name.trim();
   if (!trimmed) throw new Error('물건 이름을 입력해 주세요.');
 
   const item = { id: randomUUID(), name: trimmed, photoPath: null };
   const now = new Date().toISOString();
   const db = await getStorage();
-  const insertItem = `INSERT INTO items (id, folder_id, name, created_at, updated_at)
-    SELECT ?, id, ?, ?, ? FROM folders WHERE id = ?`;
-  const params = [item.id, item.name, now, now, folderId];
+  const insertItem = `INSERT INTO items (id, folder_id, name, note, created_at, updated_at)
+    SELECT ?, id, ?, ?, ?, ? FROM folders WHERE id = ?`;
+  const params = [item.id, item.name, note?.trim() || null, now, now, folderId];
   if (!photo) {
     const result = await db.runAsync(insertItem, params);
     if (!result.changes) throw new Error('보관 위치를 찾을 수 없어요.');

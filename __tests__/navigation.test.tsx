@@ -35,7 +35,7 @@ jest.mock('../src/itemPhotoFiles', () => ({
   itemPhotoUri: (path: string) => `file:///documents/${path}`,
 }));
 
-test('카메라 권한을 요청하고 촬영한 사진을 저장한다', async () => {
+test('카메라 권한을 요청하고 촬영한 사진과 메모를 함께 저장한다', async () => {
   jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }]);
   const asset = { uri: 'file:///cache/camera.jpg', width: 100, height: 100 };
   jest.mocked(requestCameraPermissionsAsync)
@@ -47,13 +47,14 @@ test('카메라 권한을 요청하고 촬영한 사진을 저장한다', async 
 
   await fireEvent.press(await screen.findByRole('button', { name: '물건 추가' }));
   await fireEvent.changeText(screen.getByLabelText('물건 이름'), '시계');
+  await fireEvent.changeText(screen.getByLabelText('물건 메모'), '검은 파우치 안');
   await fireEvent.press(screen.getByRole('button', { name: '사진 찍기' }));
   expect(await screen.findByRole('alert')).toHaveTextContent(/카메라 권한/);
   expect(launchCameraAsync).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByRole('button', { name: '사진 찍기' }));
   expect(await screen.findByLabelText('선택한 사진')).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('button', { name: '물건 저장' }));
-  expect(createItem).toHaveBeenCalledWith('home', '시계', asset);
+  expect(createItem).toHaveBeenCalledWith('home', '시계', { photo: asset, note: '검은 파우치 안' });
 });
 
 let mockBedroomName = '안방';
@@ -138,7 +139,7 @@ test('보관함에서 우리 집을 거치지 않고 안방을 연다', async ()
   await fireEvent.changeText(screen.getByLabelText('물건 이름'), ' 여권 ');
   await fireEvent.press(screen.getByRole('button', { name: '물건 저장' }));
   expect(listItems).toHaveBeenCalledWith('closet');
-  expect(createItem).toHaveBeenCalledWith('closet', '여권');
+  expect(createItem).toHaveBeenCalledWith('closet', '여권', { note: '' });
   expect(await screen.findByText('여권')).toBeOnTheScreen();
 
   await fireEvent.press(screen.getByRole('link', { name: '침실' }));
@@ -164,7 +165,7 @@ test('앨범 사진을 미리 보고 물건과 함께 저장한다', async () =>
   await fireEvent.press(screen.getByRole('button', { name: /앨범에서 사진 추가/ }));
   await fireEvent.press(screen.getByRole('button', { name: '물건 저장' }));
 
-  expect(createItem).toHaveBeenCalledWith('home', '시계', asset);
+  expect(createItem).toHaveBeenCalledWith('home', '시계', { photo: asset, note: '' });
   expect(await screen.findByLabelText('시계 사진')).toHaveProp('source', { uri: 'file:///documents/images/watch.jpg' });
 });
 

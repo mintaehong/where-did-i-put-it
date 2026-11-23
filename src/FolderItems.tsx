@@ -16,6 +16,7 @@ export default function FolderItems({ folderId }: { folderId: string }) {
   const [loadError, setLoadError] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [draft, setDraft] = useState<string>();
+  const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [photo, setPhoto] = useState<SelectedPhoto>();
@@ -61,9 +62,10 @@ export default function FolderItems({ folderId }: { folderId: string }) {
     setSaving(true);
     setSaveError(false);
     try {
-      const item = photo ? await createItem(folderId, name, photo) : await createItem(folderId, name);
+      const item = await createItem(folderId, name, { photo, note });
       setItems((previous) => [...(previous ?? []), item]);
       setDraft(undefined);
+      setNote('');
       setPhoto(undefined);
       setPhotoError(undefined);
     } catch {
@@ -132,6 +134,22 @@ export default function FolderItems({ folderId }: { folderId: string }) {
                   style={styles.nameInput}
                 />
               </View>
+              <View style={styles.field}>
+                <View style={styles.row}>
+                  <Text style={styles.label}>메모</Text>
+                  <Text style={styles.optional}>선택</Text>
+                </View>
+                <TextInput
+                  accessibilityLabel="물건 메모"
+                  placeholder="예: 검은 파우치 안에 넣어 둠"
+                  placeholderTextColor={colors.muted}
+                  multiline
+                  value={note}
+                  editable={!saving}
+                  onChangeText={setNote}
+                  style={[styles.nameInput, styles.noteInput]}
+                />
+              </View>
               <View style={[styles.field, styles.photoSection]}>
                 <View style={styles.row}>
                   <Text style={styles.label}>사진 첨부</Text>
@@ -176,6 +194,7 @@ export default function FolderItems({ folderId }: { folderId: string }) {
               <Button title="물건 저장" onPress={save} disabled={picking || saving || !draft.trim()} />
               <Button title="물건 추가 취소" disabled={picking || saving} onPress={() => {
                 setDraft(undefined);
+                setNote('');
                 setSaveError(false);
                 setPhoto(undefined);
                 setPhotoError(undefined);
@@ -302,6 +321,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
+  noteInput: { minHeight: 64, textAlignVertical: 'top' },
   photoArea: {
     backgroundColor: '#FAFCF9',
     borderColor: '#9DB3A5',
