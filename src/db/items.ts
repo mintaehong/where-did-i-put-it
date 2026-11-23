@@ -1,29 +1,50 @@
 import { randomUUID } from 'expo-crypto';
 
+import { copyItemPhoto, discardItemPhoto, type SelectedPhoto } from '../itemPhotoFiles';
 import { getStorage } from './folders';
+
+type Item = { id: string; name: string; photoPath: string | null };
 
 export async function listItems(folderId: string) {
   const db = await getStorage();
-  return db.getAllAsync<{ id: string; name: string }>(
-    'SELECT id, name FROM items WHERE folder_id = ? ORDER BY created_at, id',
+  return db.getAllAsync<Item>(
+    `SELECT items.id, items.name, item_images.relative_path AS photoPath
+     FROM items LEFT JOIN item_images ON item_images.item_id = items.id
+     WHERE items.folder_id = ? ORDER BY items.created_at, items.id`,
     folderId,
   );
 }
 
-export async function createItem(folderId: string, name: string) {
+export async function createItem(folderId: string, name: string, photo?: SelectedPhoto): Promise<Item> {
   const trimmed = name.trim();
   if (!trimmed) throw new Error('물건 이름을 입력해 주세요.');
 
-  const item = { id: randomUUID(), name: trimmed };
+  const item = { id: randomUUID(), name: trimmed, photoPath: null };
   const now = new Date().toISOString();
   const db = await getStorage();
-  await db.runAsync(
-    'INSERT INTO items (id, folder_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-    item.id,
-    folderId,
-    item.name,
-    now,
-    now,
-  );
-  return item;
+  const insertItem = `INSERT INTO items (id, folder_id, name, created_at, updated_at)
+    SELECT ?, id, ?, ?, ? FROM folders WHERE id = ?`;
+  const params = [item.id, item.name, now, now, folderId];
+  if (!photo) {
+    const result = await db.runAsync(insertItem, params);
+    if (!result.changes) throw new Error('보관 위치를 찾을 수 없어요.');
+    return item;
+  }
+
+  const imageId = randomUUID();
+  const saved = await copyItemPhoto(photo, imageId);
+  try {
+    await db.withExclusiveTransactionAsync(async (transaction) => {
+      const result = await transaction.runAsync(insertItem, params);
+      if (!result.changes) throw new Error('보관 위치를 찾을 수 없어요.');
+      await transaction.runAsync(
+        'INSERT INTO item_images (id, item_id, relative_path, mime_type, byte_size, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        imageId, item.id, saved.relativePath, photo.mimeType ?? null, saved.size, now,
+      );
+    });
+    return { ...item, photoPath: saved.relativePath };
+  } catch (error) {
+    discardItemPhoto(saved.file);
+    throw error;
+  }
 }
