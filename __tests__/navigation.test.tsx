@@ -8,7 +8,7 @@ import HomeScreen from '../app/index';
 import ItemScreen from '../app/item/[id]';
 import StorageScreen from '../app/storage';
 import { createChildFolder, createRootFolder, deleteEmptyChildFolder, listChildFolders, listRootFolders, renameFolder } from '../src/db/folders';
-import { askForItems, attachItemPhoto, createItem, deleteItem, getItemDetails, listItems, listRecentItems, moveItem, removeItemPhoto, renameItem, replaceItemPhoto, searchItems } from '../src/db/items';
+import { askForItems, attachItemPhoto, createItem, deleteItem, getItemDetails, listItems, listRecentItems, moveItem, removeItemPhoto, renameItem, replaceItemPhoto, saveItemNote, searchItems } from '../src/db/items';
 
 jest.mock('../src/db/items', () => ({
   createItem: jest.fn(),
@@ -21,6 +21,7 @@ jest.mock('../src/db/items', () => ({
   searchItems: jest.fn(),
   askForItems: jest.fn(),
   renameItem: jest.fn(),
+  saveItemNote: jest.fn(),
   listItems: jest.fn(async () => []),
   listRecentItems: jest.fn(async () => []),
 }));
@@ -170,7 +171,7 @@ test('앨범 사진을 미리 보고 물건과 함께 저장한다', async () =>
 test('사진 없는 물건의 상세에서 사진을 추가한다', async () => {
   const asset = { uri: 'file:///cache/passport.jpg', width: 100, height: 100 };
   jest.mocked(getItemDetails).mockResolvedValueOnce({
-    id: 'passport', name: '여권', folderId: 'home', photoPath: null, path: [],
+    id: 'passport', name: '여권', folderId: 'home', photoPath: null, path: [], note: null,
   });
   jest.mocked(launchImageLibraryAsync).mockResolvedValueOnce({ canceled: false, assets: [asset] });
   jest.mocked(attachItemPhoto).mockResolvedValueOnce('images/passport.jpg');
@@ -187,7 +188,7 @@ test('사진 없는 물건의 상세에서 사진을 추가한다', async () => 
 test('상세에서 사진 교체를 취소하거나 저장한다', async () => {
   const asset = { uri: 'file:///cache/new.jpg', width: 100, height: 100 };
   jest.mocked(getItemDetails).mockResolvedValueOnce({
-    id: 'watch', name: '시계', photoPath: 'images/old.jpg', folderId: 'home', path: [],
+    id: 'watch', name: '시계', photoPath: 'images/old.jpg', folderId: 'home', path: [], note: null,
   });
   jest.mocked(launchImageLibraryAsync).mockResolvedValue({ canceled: false, assets: [asset] });
   jest.mocked(replaceItemPhoto).mockResolvedValueOnce('images/new.jpg');
@@ -213,7 +214,7 @@ test('상세에서 사진 교체를 취소하거나 저장한다', async () => {
 
 test('상세에서 확인한 뒤 첨부 사진만 삭제한다', async () => {
   jest.mocked(getItemDetails).mockResolvedValueOnce({
-    id: 'watch', name: '시계', photoPath: 'images/watch.jpg', folderId: 'home',
+    id: 'watch', name: '시계', photoPath: 'images/watch.jpg', folderId: 'home', note: null,
     path: [{ id: 'home', name: '우리 집' }],
   });
   jest.mocked(removeItemPhoto).mockResolvedValueOnce(undefined);
@@ -238,7 +239,7 @@ test('물건 삭제를 확인하면 보관함 목록에서 사라진다', async 
   jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }]);
   jest.mocked(listItems).mockResolvedValueOnce([item]);
   jest.mocked(getItemDetails).mockResolvedValueOnce({
-    ...item, folderId: 'home', path: [{ id: 'home', name: '우리 집' }],
+    ...item, folderId: 'home', path: [{ id: 'home', name: '우리 집' }], note: null,
   });
   jest.mocked(deleteItem).mockResolvedValueOnce(undefined);
   await renderRouter({ storage: StorageScreen, 'item/[id]': ItemScreen }, { initialUrl: '/storage' });
@@ -263,7 +264,7 @@ test('물건을 다른 보관 위치로 옮기면 경로와 양쪽 목록이 갱
   const item = { id: 'watch', name: '시계', photoPath: 'images/watch.jpg' };
   jest.mocked(listRootFolders).mockResolvedValue([home, office]);
   jest.mocked(listItems).mockResolvedValueOnce([item]);
-  jest.mocked(getItemDetails).mockResolvedValueOnce({ ...item, folderId: home.id, path: [home] });
+  jest.mocked(getItemDetails).mockResolvedValueOnce({ ...item, folderId: home.id, path: [home], note: null });
   jest.mocked(moveItem).mockResolvedValueOnce(undefined);
   await renderRouter({ index: HomeScreen, storage: StorageScreen, 'item/[id]': ItemScreen });
 
@@ -292,7 +293,7 @@ test('보관함에서 물건 이름 일부를 입력하면 바로 결과가 나�
     path: [{ id: 'home', name: '우리 집' }, { id: 'closet', name: '옷장' }],
   };
   jest.mocked(searchItems).mockResolvedValueOnce([]).mockResolvedValueOnce([item]);
-  jest.mocked(getItemDetails).mockResolvedValueOnce(item);
+  jest.mocked(getItemDetails).mockResolvedValueOnce({ ...item, note: null });
   jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }]);
   await renderRouter({ storage: StorageScreen, 'item/[id]': ItemScreen }, { initialUrl: '/storage' });
 
@@ -341,6 +342,7 @@ test('목록에서 물건 상세를 열어 사진과 전체 보관 위치를 확
   jest.mocked(listItems).mockResolvedValueOnce([item]);
   jest.mocked(getItemDetails).mockResolvedValueOnce({
     ...item,
+    note: null,
     folderId: 'closet',
     path: [{ id: 'home', name: '우리 집' }, { id: 'bedroom', name: '안방' }, { id: 'closet', name: '옷장' }],
   });
@@ -438,7 +440,7 @@ test('홈에서 최근 추가한 물건을 열고 돌아오면 목록이 갱신�
   jest.mocked(listRecentItems)
     .mockResolvedValueOnce([item])
     .mockResolvedValueOnce([{ id: 'passport', name: '여권', photoPath: null }, item]);
-  jest.mocked(getItemDetails).mockResolvedValueOnce({ ...item, folderId: home.id, path: [home] });
+  jest.mocked(getItemDetails).mockResolvedValueOnce({ ...item, folderId: home.id, path: [home], note: null });
   await renderRouter({ index: HomeScreen, 'item/[id]': ItemScreen });
 
   expect(await screen.findByRole('header', { name: '최근 추가한 물건' })).toBeOnTheScreen();
@@ -447,6 +449,36 @@ test('홈에서 최근 추가한 물건을 열고 돌아오면 목록이 갱신�
   expect(await screen.findByLabelText('시계 사진')).toBeOnTheScreen();
   await act(() => router.back());
   expect(await screen.findByRole('link', { name: '여권' })).toBeOnTheScreen();
+});
+
+test('물건 상세에서 메모를 추가하고 편집하거나 비울 수 있다', async () => {
+  jest.mocked(getItemDetails).mockResolvedValueOnce({
+    id: 'passport', name: '여권', folderId: 'home', photoPath: null, path: [], note: null,
+  });
+  jest.mocked(saveItemNote)
+    .mockResolvedValueOnce('검은 파우치 안')
+    .mockResolvedValueOnce('파우치 앞주머니')
+    .mockResolvedValueOnce(null);
+  await renderRouter({ 'item/[id]': ItemScreen }, { initialUrl: '/item/passport' });
+
+  await fireEvent.press(await screen.findByRole('button', { name: /메모 추가/ }));
+  await fireEvent.changeText(screen.getByLabelText('메모 내용'), '검은 파우치 안');
+  await fireEvent.press(screen.getByRole('button', { name: '메모 저장' }));
+  expect(saveItemNote).toHaveBeenLastCalledWith('passport', '검은 파우치 안');
+  expect(await screen.findByText('검은 파우치 안')).toBeOnTheScreen();
+
+  await fireEvent.press(screen.getByRole('button', { name: '메모 수정' }));
+  expect(screen.getByLabelText('메모 내용')).toHaveProp('value', '검은 파우치 안');
+  await fireEvent.changeText(screen.getByLabelText('메모 내용'), '파우치 앞주머니');
+  await fireEvent.press(screen.getByRole('button', { name: '메모 저장' }));
+  expect(await screen.findByText('파우치 앞주머니')).toBeOnTheScreen();
+
+  await fireEvent.press(screen.getByRole('button', { name: '메모 수정' }));
+  await fireEvent.changeText(screen.getByLabelText('메모 내용'), '');
+  await fireEvent.press(screen.getByRole('button', { name: '메모 저장' }));
+  expect(saveItemNote).toHaveBeenLastCalledWith('passport', '');
+  expect(await screen.findByRole('button', { name: /메모 추가/ })).toBeOnTheScreen();
+  expect(screen.queryByText('파우치 앞주머니')).toBeNull();
 });
 
 test('홈의 장소를 누르면 해당 장소가 선택된 보관함을 연다', async () => {

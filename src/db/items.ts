@@ -27,13 +27,26 @@ export async function listRecentItems() {
 
 export async function getItemDetails(id: string) {
   const db = await getStorage();
-  const item = await db.getFirstAsync<Item & { folderId: string }>(
-    `SELECT ${itemColumns}, items.folder_id AS folderId ${itemTables} WHERE items.id = ?`,
+  const item = await db.getFirstAsync<Item & { folderId: string; note: string | null }>(
+    `SELECT ${itemColumns}, items.folder_id AS folderId, items.note ${itemTables} WHERE items.id = ?`,
     id,
   );
   if (!item) return null;
 
   return { ...item, path: await getFolderPath(item.folderId) };
+}
+
+export async function saveItemNote(id: string, note: string) {
+  const value = note.trim() || null;
+  const db = await getStorage();
+  const result = await db.runAsync(
+    'UPDATE items SET note = ?, updated_at = ? WHERE id = ?',
+    value,
+    new Date().toISOString(),
+    id,
+  );
+  if (!result.changes) throw new Error('물건을 찾을 수 없어요.');
+  return value;
 }
 
 export async function searchItems(name: string) {

@@ -5,6 +5,7 @@ import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View
 import { attachItemPhoto, deleteItem, getItemDetails, removeItemPhoto, renameItem, replaceItemPhoto } from '../../src/db/items';
 import EditableName from '../../src/EditableName';
 import ItemLocation from '../../src/ItemLocation';
+import ItemNote from '../../src/ItemNote';
 import { itemPhotoUri, type SelectedPhoto } from '../../src/itemPhotoFiles';
 import { pickItemPhoto } from '../../src/pickItemPhoto';
 import { colors, screenStyles } from '../../src/theme';
@@ -56,6 +57,9 @@ function ItemDetails({ id }: { id: string }) {
           />
           <ItemLocation itemId={item.id} folderId={item.folderId} path={item.path} onMoved={(folder, path) => {
             setItem((previous) => previous ? { ...previous, folderId: folder.id, path } : previous);
+          }} />
+          <ItemNote itemId={item.id} note={item.note} onSaved={(note) => {
+            setItem((previous) => previous ? { ...previous, note } : previous);
           }} />
           <DeleteItem itemId={item.id} itemName={item.name} onDeleted={() => {
             setItem(null);
