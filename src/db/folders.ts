@@ -80,3 +80,17 @@ export async function createChildFolder(parentId: string, name: string) {
   );
   return folder;
 }
+
+export async function renameFolder(id: string, name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('폴더 이름을 입력해 주세요.');
+
+  const db = await getStorage();
+  const result = await db.runAsync(
+    'UPDATE folders SET name = ?, updated_at = ? WHERE id = ?',
+    trimmed,
+    new Date().toISOString(),
+    id,
+  );
+  if (result.changes === 0) throw new Error('보관 장소를 찾을 수 없어요.');
+}

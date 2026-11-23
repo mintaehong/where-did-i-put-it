@@ -1,7 +1,9 @@
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Button, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import ChildFolders from '../src/ChildFolders';
+import RenameFolder from '../src/RenameFolder';
 import { listRootFolders } from '../src/db/folders';
 import { colors, screenStyles } from '../src/theme';
 
@@ -34,9 +36,17 @@ export default function StorageScreen() {
 
   return (
     <ScrollView contentContainerStyle={screenStyles.content} keyboardShouldPersistTaps="handled">
-      <Text accessibilityRole="header" style={screenStyles.heading}>
-        {selected?.name ?? '보관 장소'}
-      </Text>
+      {selected ? (
+        <RenameFolder key={`rename-${selected.id}`} id={selected.id} name={selected.name} onSaved={(name) => {
+          setResult((previous) => previous.status === 'ready'
+            ? { status: 'ready', folders: previous.folders.map((folder) => (
+              folder.id === selected.id ? { ...folder, name } : folder
+            )) }
+            : previous);
+        }} />
+      ) : (
+        <Text accessibilityRole="header" style={screenStyles.heading}>보관 장소</Text>
+      )}
       {result.status === 'loading' && <ActivityIndicator accessibilityLabel="보관함 불러오는 중" />}
       {result.status === 'error' && (
         <>
@@ -65,7 +75,11 @@ export default function StorageScreen() {
       {result.status === 'ready' && !selected && (
         <Text style={screenStyles.body}>아직 등록된 보관 장소가 없어요.</Text>
       )}
-      {selected && <ChildFolders key={selected.id} parentId={selected.id} />}
+      {selected && (
+        <>
+          <ChildFolders key={selected.id} parentId={selected.id} />
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -86,4 +100,3 @@ const styles = StyleSheet.create({
     backgroundColor: '#DFEDE3',
   },
 });
-import { useLocalSearchParams, useRouter } from 'expo-router';

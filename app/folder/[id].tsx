@@ -1,8 +1,9 @@
-import { Link, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { Link, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import ChildFolders from '../../src/ChildFolders';
+import RenameFolder from '../../src/RenameFolder';
 import { getFolderPath } from '../../src/db/folders';
 import { screenStyles } from '../../src/theme';
 
@@ -13,7 +14,7 @@ export default function FolderScreen() {
     path: Awaited<ReturnType<typeof getFolderPath>> | null;
   }>();
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     let active = true;
     getFolderPath(id).then(
       (path) => {
@@ -26,7 +27,7 @@ export default function FolderScreen() {
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [id]));
 
   const current = result?.path?.at(-1);
 
@@ -53,7 +54,11 @@ export default function FolderScreen() {
             ))}
             <Text style={screenStyles.body}>{current.name}</Text>
           </View>
-          <Text accessibilityRole="header" style={screenStyles.heading}>{current.name}</Text>
+          <RenameFolder key={`rename-${id}`} id={id} name={current.name} onSaved={(name) => {
+            setResult((previous) => previous?.id === id && previous.path
+              ? { id, path: previous.path.map((folder) => folder.id === id ? { ...folder, name } : folder) }
+              : previous);
+          }} />
           <ChildFolders key={id} parentId={id} />
         </>
       ) : (

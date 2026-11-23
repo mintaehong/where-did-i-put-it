@@ -5,16 +5,23 @@ import RootLayout from '../app/_layout';
 import FolderScreen from '../app/folder/[id]';
 import HomeScreen from '../app/index';
 import StorageScreen from '../app/storage';
-import { createChildFolder, listRootFolders } from '../src/db/folders';
+import { createChildFolder, listRootFolders, renameFolder } from '../src/db/folders';
+
+let mockBedroomName = '안방';
+
+beforeEach(() => {
+  mockBedroomName = '안방';
+});
 
 jest.mock('../src/db/folders', () => ({
   listRootFolders: jest.fn(),
   createChildFolder: jest.fn(),
-  listChildFolders: async (id: string) => id === 'home' ? [{ id: 'bedroom', name: '안방' }] : [],
+  renameFolder: jest.fn(async (_id: string, name: string) => { mockBedroomName = name; }),
+  listChildFolders: async (id: string) => id === 'home' ? [{ id: 'bedroom', name: mockBedroomName }] : [],
   getFolderPath: async (id: string) => {
     const path = [
       { id: 'home', name: '우리 집' },
-      { id: 'bedroom', name: '안방' },
+      { id: 'bedroom', name: mockBedroomName },
       { id: 'closet', name: '옷장' },
     ];
     return path.slice(0, path.findIndex((folder) => folder.id === id) + 1);
@@ -47,7 +54,18 @@ test('보관함에서 우리 집을 거치지 않고 안방을 연다', async ()
   expect(screen).toHavePathname('/storage');
   await fireEvent.press(await screen.findByRole('link', { name: '안방' }));
   expect(screen).toHavePathname('/folder/bedroom');
-  expect(await screen.findByRole('header', { name: '안방' })).toBeOnTheScreen();
+  const title = await screen.findByRole('button', { name: '안방 이름 변경' });
+  expect(screen.queryByLabelText('새 폴더 이름')).toBeNull();
+  expect(screen.queryByRole('button', { name: '이름 저장' })).toBeNull();
+  expect(screen.queryByRole('button', { name: '취소' })).toBeNull();
+  await fireEvent.press(title);
+  await fireEvent.press(screen.getByRole('button', { name: '취소' }));
+  expect(screen.queryByLabelText('새 폴더 이름')).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: '안방 이름 변경' }));
+  await fireEvent.changeText(screen.getByLabelText('새 폴더 이름'), ' 침실 ');
+  await fireEvent.press(screen.getByRole('button', { name: '이름 저장' }));
+  expect(renameFolder).toHaveBeenCalledWith('bedroom', '침실');
+  expect(await screen.findByRole('button', { name: '침실 이름 변경' })).toBeOnTheScreen();
 
   jest.mocked(createChildFolder).mockResolvedValue({ id: 'closet', name: '옷장' });
   await fireEvent.press(await screen.findByRole('button', { name: '폴더 추가' }));
@@ -57,13 +75,14 @@ test('보관함에서 우리 집을 거치지 않고 안방을 연다', async ()
 
   await fireEvent.press(await screen.findByRole('link', { name: '옷장' }));
   expect(screen).toHavePathname('/folder/closet');
-  expect(await screen.findByRole('header', { name: '옷장' })).toBeOnTheScreen();
+  expect(await screen.findByRole('button', { name: '옷장 이름 변경' })).toBeOnTheScreen();
   expect(screen.getByRole('link', { name: '우리 집' })).toBeOnTheScreen();
 
-  await fireEvent.press(screen.getByRole('link', { name: '안방' }));
+  await fireEvent.press(screen.getByRole('link', { name: '침실' }));
   expect(screen).toHavePathname('/folder/bedroom');
   await act(() => router.back());
   expect(screen).toHavePathname('/storage');
+  expect(await screen.findByRole('link', { name: '침실' })).toBeOnTheScreen();
 });
 
 test('최상위 장소가 여러 개면 보관함 안에서 전환한다', async () => {
@@ -77,7 +96,7 @@ test('최상위 장소가 여러 개면 보관함 안에서 전환한다', async
   await fireEvent.press(screen.getByRole('button', { name: '회사' }));
 
   expect(screen).toHavePathname('/storage');
-  expect(screen.getByRole('header', { name: '회사' })).toBeOnTheScreen();
+  expect(screen.getByRole('button', { name: '회사 이름 변경' })).toBeOnTheScreen();
   expect(screen.queryByRole('link', { name: '안방' })).toBeNull();
   expect(await screen.findByText('아직 이곳에 등록된 보관 장소가 없어요.')).toBeOnTheScreen();
 });

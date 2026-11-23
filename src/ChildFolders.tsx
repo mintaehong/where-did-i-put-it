@@ -1,5 +1,5 @@
-import { Link } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { Link, useFocusEffect } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Button, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { createChildFolder, listChildFolders } from './db/folders';
@@ -38,7 +38,7 @@ export default function ChildFolders({ parentId }: { parentId: string }) {
     }
   }
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     let active = true;
     listChildFolders(parentId).then(
       (folders) => {
@@ -51,7 +51,7 @@ export default function ChildFolders({ parentId }: { parentId: string }) {
     return () => {
       active = false;
     };
-  }, [parentId, attempt]);
+  }, [parentId, attempt]));
 
   if (result.status === 'loading') {
     return <ActivityIndicator accessibilityLabel="보관 장소 불러오는 중" />;
