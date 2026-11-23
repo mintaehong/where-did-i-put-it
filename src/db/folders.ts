@@ -102,3 +102,26 @@ export async function renameFolder(id: string, name: string) {
   );
   if (result.changes === 0) throw new Error('보관 장소를 찾을 수 없어요.');
 }
+
+export async function deleteEmptyChildFolder(id: string) {
+  const db = await getStorage();
+  const result = await db.runAsync(
+    `DELETE FROM folders
+     WHERE id = ? AND parent_id IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM folders AS child WHERE child.parent_id = folders.id)
+       AND NOT EXISTS (SELECT 1 FROM items WHERE items.folder_id = folders.id)`,
+    id,
+  );
+  if (result.changes) return 'deleted';
+
+  const contents = await db.getFirstAsync<{ hasChildren: number; hasItems: number }>(
+    `SELECT EXISTS (SELECT 1 FROM folders AS child WHERE child.parent_id = folders.id) AS hasChildren,
+            EXISTS (SELECT 1 FROM items WHERE items.folder_id = folders.id) AS hasItems
+     FROM folders WHERE id = ? AND parent_id IS NOT NULL`,
+    id,
+  );
+  if (contents?.hasItems && contents.hasChildren) return 'both';
+  if (contents?.hasItems) return 'items';
+  if (contents?.hasChildren) return 'children';
+  return 'unavailable';
+}

@@ -7,7 +7,7 @@ import FolderScreen from '../app/folder/[id]';
 import HomeScreen from '../app/index';
 import ItemScreen from '../app/item/[id]';
 import StorageScreen from '../app/storage';
-import { createChildFolder, createRootFolder, listRootFolders, renameFolder } from '../src/db/folders';
+import { createChildFolder, createRootFolder, deleteEmptyChildFolder, listChildFolders, listRootFolders, renameFolder } from '../src/db/folders';
 import { askForItems, attachItemPhoto, createItem, deleteItem, getItemDetails, listItems, listRecentItems, moveItem, removeItemPhoto, renameItem, replaceItemPhoto, searchItems } from '../src/db/items';
 
 jest.mock('../src/db/items', () => ({
@@ -65,8 +65,9 @@ jest.mock('../src/db/folders', () => ({
   listRootFolders: jest.fn(),
   createChildFolder: jest.fn(),
   createRootFolder: jest.fn(),
+  deleteEmptyChildFolder: jest.fn(),
   renameFolder: jest.fn(async (_id: string, name: string) => { mockBedroomName = name; }),
-  listChildFolders: async (id: string) => id === 'home' ? [{ id: 'bedroom', name: mockBedroomName }] : [],
+  listChildFolders: jest.fn(async (id: string) => id === 'home' ? [{ id: 'bedroom', name: mockBedroomName }] : []),
   getFolderPath: async (id: string) => {
     const path = [
       { id: 'home', name: '우리 집' },
@@ -402,6 +403,32 @@ test('물건이 네 개를 넘으면 카드 보기에서 옆으로 넘길 수 �
   await fireEvent.press(screen.getByRole('button', { name: '목록 보기' }));
   expect(screen.queryByText(/옆으로 넘겨 더 보기/)).toBeNull();
   expect(screen.getAllByRole('link', { name: /^물건 \d/ })).toHaveLength(5);
+});
+
+test('내용이 남은 위치는 삭제할 수 없고 빈 위치를 삭제하면 상위 목록으로 돌아온다', async () => {
+  jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }]);
+  jest.mocked(deleteEmptyChildFolder).mockResolvedValueOnce('both').mockResolvedValueOnce('deleted');
+  await renderRouter({
+    _layout: RootLayout, index: HomeScreen, storage: StorageScreen,
+    'folder/[id]': FolderScreen, 'item/[id]': ItemScreen,
+  }, { initialUrl: '/storage' });
+
+  await fireEvent.press(await screen.findByRole('link', { name: '안방' }));
+  await fireEvent.press(await screen.findByRole('button', { name: '위치 삭제' }));
+  await fireEvent.press(screen.getByRole('button', { name: '위치 삭제 확인' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent(/물건과 하위 위치가 남아 있어요/);
+  expect(screen).toHavePathname('/folder/bedroom');
+  expect(screen.queryByRole('button', { name: '위치 삭제 확인' })).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
+  expect(screen.queryByRole('alert')).toBeNull();
+
+  jest.mocked(listChildFolders).mockResolvedValueOnce([]);
+  await fireEvent.press(screen.getByRole('button', { name: '위치 삭제' }));
+  await fireEvent.press(screen.getByRole('button', { name: '위치 삭제 확인' }));
+  expect(deleteEmptyChildFolder).toHaveBeenLastCalledWith('bedroom');
+  expect(screen).toHavePathname('/storage');
+  expect(await screen.findByText('아직 이곳에 등록된 보관 장소가 없어요.')).toBeOnTheScreen();
+  expect(screen.queryByRole('link', { name: '안방' })).toBeNull();
 });
 
 test('홈에서 최근 추가한 물건을 열고 돌아오면 목록이 갱신된다', async () => {
