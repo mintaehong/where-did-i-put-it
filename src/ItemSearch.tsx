@@ -2,57 +2,78 @@ import { Link, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { searchItems } from './db/items';
+import { askForItems, searchItems } from './db/items';
 import { colors } from './theme';
 
-export default function ItemSearch() {
+export default function ItemSearch({ mode }: { mode: 'question' | 'search' }) {
   const [input, setInput] = useState('');
-  const name = input.trim();
+  const text = input.trim();
+  const isQuestion = mode === 'question';
+  const [question, setQuestion] = useState('');
+  const query = isQuestion ? question : text;
   const [attempt, setAttempt] = useState(0);
   const [response, setResponse] = useState<{
-    name: string;
+    query: string;
     items: Awaited<ReturnType<typeof searchItems>> | null;
   }>();
-  const result = response?.name === name ? response : undefined;
+  const result = response?.query === query ? response : undefined;
 
   useFocusEffect(useCallback(() => {
-    if (!name) return;
+    if (!query) return;
     let active = true;
     const timer = setTimeout(() => {
-      searchItems(name).then(
-        (items) => { if (active) setResponse({ name, items }); },
-        () => { if (active) setResponse({ name, items: null }); },
+      const find = isQuestion ? askForItems : searchItems;
+      find(query).then(
+        (items) => { if (active) setResponse({ query, items }); },
+        () => { if (active) setResponse({ query, items: null }); },
       );
-    }, 180);
+    }, isQuestion ? 0 : 180);
     return () => {
       active = false;
       clearTimeout(timer);
     };
-  }, [name, attempt]));
+  }, [query, isQuestion, attempt]));
+
+  function ask() {
+    if (!text) return;
+    setResponse(undefined);
+    setQuestion(text);
+    setAttempt((value) => value + 1);
+    Keyboard.dismiss();
+  }
 
   return (
-    <View style={styles.section}>
+    <View style={[styles.section, isQuestion && styles.questionSection]}>
       <View style={styles.searchBar}>
         <TextInput
-          accessibilityLabel="물건 이름 검색"
-          placeholder="물건 이름으로 찾아봐"
+          accessibilityLabel={isQuestion ? '엄마에게 물어보기' : '물건 이름 검색'}
+          placeholder={isQuestion ? '예: 스티커 어딨어?' : '물건 이름 검색'}
           placeholderTextColor={colors.muted}
           value={input}
-          onChangeText={setInput}
-          onSubmitEditing={Keyboard.dismiss}
-          returnKeyType="search"
+          onChangeText={(text) => {
+            setInput(text);
+            setQuestion('');
+          }}
+          onSubmitEditing={isQuestion ? ask : Keyboard.dismiss}
+          returnKeyType={isQuestion ? 'send' : 'search'}
           style={styles.input}
         />
         {input !== '' && (
-          <Pressable accessibilityRole="button" accessibilityLabel="검색어 지우기" onPress={() => {
+          <Pressable accessibilityRole="button" accessibilityLabel={isQuestion ? '질문 지우기' : '검색어 지우기'} onPress={() => {
             setInput('');
             setResponse(undefined);
+            setQuestion('');
           }} style={styles.clearButton}>
             <Text style={styles.clearIcon}>×</Text>
           </Pressable>
         )}
+        {isQuestion && (
+          <Pressable accessibilityRole="button" disabled={!text} onPress={ask} style={[styles.askButton, !text && styles.disabled]}>
+            <Text style={styles.askLabel}>물어보기</Text>
+          </Pressable>
+        )}
       </View>
-      {name !== '' && (
+      {query !== '' && (
         <View style={styles.results}>
           {!result ? (
             <ActivityIndicator accessibilityLabel="물건 찾는 중" />
@@ -63,33 +84,58 @@ export default function ItemSearch() {
             }} style={styles.result}>
               <Text style={styles.message}>검색하지 못했어요. 다시 시도</Text>
             </Pressable>
-          ) : result.items.length === 0 ? (
-            <Text style={styles.message}>‘{name}’에 해당하는 물건이 없어요.</Text>
-          ) : result.items.map((item) => (
-            <Link key={item.id} href={{ pathname: '/item/[id]', params: { id: item.id } }} asChild>
-              <Pressable accessibilityRole="link" onPress={Keyboard.dismiss} style={({ pressed }) => [styles.result, pressed && styles.pressed]}>
-                <View style={styles.resultText}>
-                  <Text style={styles.name}>{item.name}</Text>
-                  <Text style={styles.message}>
-                    {item.path.length ? item.path.map((folder) => folder.name).join(' › ') : '보관 위치를 찾을 수 없어요.'}
-                  </Text>
+          ) : (
+            <>
+              {isQuestion ? (
+                <View style={styles.answer}>
+                  <Text style={styles.name}>엄마</Text>
+                  <Text style={styles.message}>{answerFor(result.items)}</Text>
                 </View>
-                <Text importantForAccessibility="no" style={styles.chevron}>›</Text>
-              </Pressable>
-            </Link>
-          ))}
+              ) : result.items.length === 0 && (
+                <Text style={styles.message}>‘{query}’에 해당하는 물건이 없어요.</Text>
+              )}
+              {result.items.map((item) => (
+                <Link key={item.id} href={{ pathname: '/item/[id]', params: { id: item.id } }} asChild>
+                  <Pressable accessibilityRole="link" onPress={Keyboard.dismiss} style={({ pressed }) => [styles.result, pressed && styles.pressed]}>
+                    <View style={styles.resultText}>
+                      <Text style={styles.name}>{item.name}</Text>
+                      <Text style={styles.message}>
+                        {item.path.length ? item.path.map((folder) => folder.name).join(' › ') : '보관 위치를 찾을 수 없어요.'}
+                      </Text>
+                    </View>
+                    <Text importantForAccessibility="no" style={styles.chevron}>›</Text>
+                  </Pressable>
+                </Link>
+              ))}
+            </>
+          )}
         </View>
       )}
     </View>
   );
 }
 
+function answerFor(items: Awaited<ReturnType<typeof askForItems>>) {
+  if (items.length === 0) return '등록한 물건 중에는 못 찾겠네~ 이름을 넣어서 다시 물어봐 줄래?';
+  if (items.length > 1) return '찾은 물건이 몇 개 있네~ 아래에서 이름이랑 위치를 확인해 봐.';
+  const item = items[0];
+  const folder = item.path.at(-1);
+  return folder
+    ? `‘${item.name}’, ${folder.name}에 있어~`
+    : `‘${item.name}’ 기록은 있는데 보관 위치는 확인할 수 없네.`;
+}
+
 const styles = StyleSheet.create({
-  section: { gap: 12, marginBottom: 16 },
+  section: { gap: 12 },
+  questionSection: { marginBottom: 16 },
   searchBar: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 4, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: '#DEE7DE' },
   input: { flex: 1, minWidth: 0, minHeight: 44, paddingHorizontal: 10, fontSize: 16, color: colors.text },
   clearButton: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   clearIcon: { color: '#2D6654', fontSize: 22 },
+  askButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 10, borderRadius: 10, backgroundColor: '#2D6654' },
+  askLabel: { color: colors.surface, fontWeight: '700' },
+  disabled: { opacity: 0.5 },
+  answer: { gap: 4, borderRadius: 14, padding: 14, backgroundColor: '#D9EDE1' },
   results: { gap: 8 },
   result: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, backgroundColor: '#EAF2EA' },
   resultText: { flex: 1, gap: 4 },

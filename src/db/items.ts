@@ -1,6 +1,7 @@
 import { randomUUID } from 'expo-crypto';
 
 import { copyItemPhoto, discardItemPhoto, discardStoredItemPhoto, type SelectedPhoto } from '../itemPhotoFiles';
+import { findItemMentions } from '../itemMentions';
 import { getFolderPath, getStorage } from './folders';
 
 type Item = { id: string; name: string; photoPath: string | null };
@@ -38,6 +39,19 @@ export async function searchItems(name: string) {
      WHERE instr(lower(items.name), lower(?)) > 0 ORDER BY items.name, items.id`,
     query,
   );
+  return withItemPaths(items);
+}
+
+export async function askForItems(question: string) {
+  if (!question.trim()) return [];
+  const db = await getStorage();
+  const items = await db.getAllAsync<Item & { folderId: string }>(
+    `SELECT ${itemColumns}, items.folder_id AS folderId ${itemTables} ORDER BY items.name, items.id`,
+  );
+  return withItemPaths(findItemMentions(question, items));
+}
+
+async function withItemPaths(items: (Item & { folderId: string })[]) {
   const paths = new Map<string, ReturnType<typeof getFolderPath>>();
   return Promise.all(items.map(async (item) => {
     const path = paths.get(item.folderId) ?? getFolderPath(item.folderId);

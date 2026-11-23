@@ -8,7 +8,7 @@ import HomeScreen from '../app/index';
 import ItemScreen from '../app/item/[id]';
 import StorageScreen from '../app/storage';
 import { createChildFolder, listRootFolders, renameFolder } from '../src/db/folders';
-import { attachItemPhoto, createItem, deleteItem, getItemDetails, listItems, moveItem, removeItemPhoto, renameItem, replaceItemPhoto, searchItems } from '../src/db/items';
+import { askForItems, attachItemPhoto, createItem, deleteItem, getItemDetails, listItems, moveItem, removeItemPhoto, renameItem, replaceItemPhoto, searchItems } from '../src/db/items';
 
 jest.mock('../src/db/items', () => ({
   createItem: jest.fn(),
@@ -19,6 +19,7 @@ jest.mock('../src/db/items', () => ({
   moveItem: jest.fn(),
   getItemDetails: jest.fn(),
   searchItems: jest.fn(),
+  askForItems: jest.fn(),
   renameItem: jest.fn(),
   listItems: jest.fn(async () => []),
 }));
@@ -280,16 +281,18 @@ test('물건을 다른 보관 위치로 옮기면 경로와 양쪽 목록이 갱
   expect(listItems).toHaveBeenLastCalledWith('office');
 });
 
-test('홈에서 물건 이름 일부를 입력하면 바로 결과가 나오고 상세를 열 수 있다', async () => {
+test('보관함에서 물건 이름 일부를 입력하면 바로 결과가 나오고 상세를 열 수 있다', async () => {
   const item = {
     id: 'sticker', name: '스티커', photoPath: null, folderId: 'closet',
     path: [{ id: 'home', name: '우리 집' }, { id: 'closet', name: '옷장' }],
   };
   jest.mocked(searchItems).mockResolvedValueOnce([]).mockResolvedValueOnce([item]);
   jest.mocked(getItemDetails).mockResolvedValueOnce(item);
-  await renderRouter({ index: HomeScreen, 'item/[id]': ItemScreen });
+  jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }]);
+  await renderRouter({ storage: StorageScreen, 'item/[id]': ItemScreen }, { initialUrl: '/storage' });
 
   const input = screen.getByLabelText('물건 이름 검색');
+  expect(screen.queryByRole('button', { name: '물어보기' })).toBeNull();
   await fireEvent.changeText(input, '없는 물건');
   expect(await screen.findByText(/해당하는 물건이 없어요/)).toBeOnTheScreen();
 
@@ -299,6 +302,32 @@ test('홈에서 물건 이름 일부를 입력하면 바로 결과가 나오고 
   await fireEvent.press(screen.getByRole('link', { name: /스티커/ }));
   expect(screen).toHavePathname('/item/sticker');
   expect(await screen.findByRole('button', { name: '스티커 이름 변경' })).toBeOnTheScreen();
+});
+
+test('말하듯 물으면 실제 위치를 답하고 물건 이름이 없으면 다시 묻는다', async () => {
+  const item = {
+    id: 'sticker', name: '스티커', photoPath: null, folderId: 'closet',
+    path: [{ id: 'home', name: '우리 집' }, { id: 'closet', name: '옷장' }],
+  };
+  jest.mocked(searchItems).mockClear();
+  jest.mocked(askForItems).mockClear();
+  jest.mocked(askForItems).mockResolvedValueOnce([item]).mockResolvedValueOnce([]);
+  await renderRouter({ index: HomeScreen });
+
+  const input = screen.getByLabelText('엄마에게 물어보기');
+  expect(screen.queryByLabelText('물건 이름 검색')).toBeNull();
+  await fireEvent.changeText(input, '야 스티커 어딨냐');
+  expect(askForItems).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByRole('button', { name: '물어보기' }));
+  expect(await screen.findByText('‘스티커’, 옷장에 있어~')).toBeOnTheScreen();
+  expect(screen.getByText('우리 집 › 옷장')).toBeOnTheScreen();
+  expect(askForItems).toHaveBeenLastCalledWith('야 스티커 어딨냐');
+  expect(searchItems).not.toHaveBeenCalled();
+
+  await fireEvent.changeText(input, '아까 쓰던 그거 어딨냐');
+  await fireEvent.press(screen.getByRole('button', { name: '물어보기' }));
+  expect(await screen.findByText(/이름을 넣어서 다시 물어봐/)).toBeOnTheScreen();
+  expect(screen.queryByText('우리 집 › 옷장')).toBeNull();
 });
 
 test('목록에서 물건 상세를 열어 사진과 전체 보관 위치를 확인한다', async () => {

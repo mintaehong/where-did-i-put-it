@@ -10,7 +10,7 @@ export default function HomeScreen() {
         {'어디에 뒀더라? 👋\n엄마가 기억해 줄게.'}
       </Text>
       <Text style={styles.description}>소중한 물건들, 여기 차곡차곡 모아두자.</Text>
-      <ItemSearch />
+      <ItemSearch mode="question" />
       <View style={styles.memo}>
         <View style={styles.memoCopy}>
           <Text style={styles.memoLabel}>엄마의 보관 노트</Text>

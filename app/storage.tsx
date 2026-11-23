@@ -5,6 +5,7 @@ import { ActivityIndicator, Button, Pressable, ScrollView, StyleSheet, Text, Vie
 import ChildFolders from '../src/ChildFolders';
 import FolderItems from '../src/FolderItems';
 import EditableName from '../src/EditableName';
+import ItemSearch from '../src/ItemSearch';
 import { listRootFolders, renameFolder } from '../src/db/folders';
 import { colors, screenStyles } from '../src/theme';
 
@@ -37,6 +38,7 @@ export default function StorageScreen() {
 
   return (
     <ScrollView contentContainerStyle={screenStyles.content} keyboardShouldPersistTaps="handled">
+      <ItemSearch mode="search" />
       {selected ? (
         <EditableName key={`rename-${selected.id}`} id={selected.id} name={selected.name} inputLabel="새 폴더 이름" persistName={renameFolder} onSaved={(name) => {
           setResult((previous) => previous.status === 'ready'
