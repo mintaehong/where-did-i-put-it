@@ -1,6 +1,8 @@
 import { randomUUID } from 'expo-crypto';
 import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 
+import { copyItemPhoto, discardItemPhoto } from '../itemPhotoFiles';
+import type { PlaceCover } from '../placeCovers';
 import { migrateDatabase } from './migrate';
 
 let database: Promise<SQLiteDatabase> | undefined;
@@ -26,8 +28,8 @@ export function getStorage() {
 
 export async function listRootFolders() {
   const db = await getStorage();
-  return db.getAllAsync<{ id: string; name: string }>(
-    'SELECT id, name FROM folders WHERE parent_id IS NULL ORDER BY created_at, id',
+  return db.getAllAsync<{ id: string; name: string; coverPath?: string | null }>(
+    'SELECT id, name, cover_path AS coverPath FROM folders WHERE parent_id IS NULL ORDER BY created_at, id',
   );
 }
 
@@ -74,29 +76,32 @@ export async function listRootChildFolders() {
   );
 }
 
-export function createChildFolder(parentId: string, name: string) {
+export function createChildFolder(parentId: string, name: string): Promise<{ id: string; name: string }> {
   return createFolder(parentId, name);
 }
 
-export function createRootFolder(name: string) {
-  return createFolder(null, name);
+export function createRootFolder(name: string, cover?: PlaceCover) {
+  return createFolder(null, name, cover);
 }
 
-async function createFolder(parentId: string | null, name: string) {
+async function createFolder(parentId: string | null, name: string, cover?: PlaceCover) {
   const folder = { id: randomUUID(), name: name.trim() };
   if (!folder.name) throw new Error('폴더 이름을 입력해 주세요.');
 
   const db = await getStorage();
   const now = new Date().toISOString();
-  await db.runAsync(
-    'INSERT INTO folders (id, parent_id, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-    folder.id,
-    parentId,
-    folder.name,
-    now,
-    now,
-  );
-  return folder;
+  const saved = cover && 'photo' in cover ? await copyItemPhoto(cover.photo, folder.id, 'place-covers') : undefined;
+  const coverPath = cover && 'preset' in cover ? `preset:${cover.preset}` : saved?.relativePath ?? null;
+  try {
+    await db.runAsync(
+      'INSERT INTO folders (id, parent_id, name, created_at, updated_at, cover_path) VALUES (?, ?, ?, ?, ?, ?)',
+      folder.id, parentId, folder.name, now, now, coverPath,
+    );
+    return { ...folder, coverPath };
+  } catch (error) {
+    if (saved) discardItemPhoto(saved.file);
+    throw error;
+  }
 }
 
 export async function renameFolder(id: string, name: string) {

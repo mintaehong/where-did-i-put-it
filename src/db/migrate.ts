@@ -4,14 +4,14 @@ export async function migrateDatabase(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA foreign_keys = ON');
   await db.withTransactionAsync(async () => {
     const version = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-    if (version?.user_version === 3) return;
-    if (version?.user_version !== 0 && version?.user_version !== 1 && version?.user_version !== 2) {
+    if (version?.user_version === 4) return;
+    if (version?.user_version !== 0 && version?.user_version !== 1 && version?.user_version !== 2 && version?.user_version !== 3) {
       throw new Error('지원하지 않는 보관함 데이터베이스 버전입니다.');
     }
 
     if (version.user_version === 0) await createFolders(db);
     if (version.user_version < 2) await createItems(db);
-    await db.execAsync(`
+    if (version.user_version < 3) await db.execAsync(`
       CREATE TABLE item_images (
         id TEXT PRIMARY KEY NOT NULL,
         item_id TEXT NOT NULL UNIQUE REFERENCES items(id) ON DELETE CASCADE,
@@ -20,8 +20,8 @@ export async function migrateDatabase(db: SQLiteDatabase) {
         byte_size INTEGER NOT NULL CHECK (byte_size > 0),
         created_at TEXT NOT NULL
       );
-      PRAGMA user_version = 3;
     `);
+    await db.execAsync('ALTER TABLE folders ADD COLUMN cover_path TEXT; PRAGMA user_version = 4;');
   });
 }
 

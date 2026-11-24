@@ -581,7 +581,7 @@ test('홈의 장소를 누르면 해당 장소가 선택된 보관함을 연다'
 
 test('홈에서 장소를 추가하고 새 카드로 해당 보관함을 연다', async () => {
   const home = { id: 'home', name: '우리 집' };
-  const office = { id: 'office', name: '회사' };
+  const office = { id: 'office', name: '회사', coverPath: null };
   jest.mocked(listRootFolders).mockResolvedValue([home]);
   jest.mocked(createRootFolder).mockResolvedValueOnce(office);
   await renderRouter({ index: HomeScreen, storage: StorageScreen });
@@ -596,6 +596,27 @@ test('홈에서 장소를 추가하고 새 카드로 해당 보관함을 연다'
   jest.mocked(listRootFolders).mockResolvedValue([home, office]);
   await fireEvent.press(card);
   expect(await screen.findByRole('header', { name: '회사' })).toBeOnTheScreen();
+});
+
+test('장소 추가에서 기본 커버를 고르고 카메라 사진으로 바꿔 저장한다', async () => {
+  const asset = { uri: 'file:///cache/office.jpg', width: 100, height: 100 };
+  jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집', coverPath: null }]);
+  jest.mocked(requestCameraPermissionsAsync).mockResolvedValueOnce({
+    granted: true, status: PermissionStatus.GRANTED, canAskAgain: true, expires: 'never',
+  });
+  jest.mocked(launchCameraAsync).mockResolvedValueOnce({ canceled: false, assets: [asset] });
+  jest.mocked(createRootFolder).mockResolvedValueOnce({ id: 'office', name: '회사', coverPath: 'place-covers/office.jpg' });
+  await renderRouter({ index: HomeScreen });
+
+  await fireEvent.press(await screen.findByRole('button', { name: '장소 추가' }));
+  await fireEvent.changeText(screen.getByLabelText('장소 이름'), '회사');
+  await fireEvent.press(screen.getByRole('button', { name: '사무실 커버' }));
+  expect(screen.getByRole('button', { name: '사무실 커버', selected: true })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: '사진 찍기' }));
+  expect(await screen.findByLabelText('선택한 장소 사진')).toHaveProp('source', { uri: asset.uri });
+  await fireEvent.press(screen.getByRole('button', { name: '장소 저장' }));
+  expect(createRootFolder).toHaveBeenLastCalledWith('회사', { photo: asset });
+  expect(await screen.findByRole('link', { name: '회사' })).toBeOnTheScreen();
 });
 
 test('홈의 장소 행에서 기존 이름을 바로 편집한다', async () => {

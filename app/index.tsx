@@ -6,17 +6,9 @@ import EditableName from '../src/EditableName';
 import { createRootFolder, listRootChildFolders, listRootFolders, renameFolder } from '../src/db/folders';
 import { listRecentItemsByLocation } from '../src/db/items';
 import { itemPhotoUri } from '../src/itemPhotoFiles';
+import { pickItemPhoto } from '../src/pickItemPhoto';
+import { placeCoverImage, placeCovers, type PlaceCover } from '../src/placeCovers';
 import { colors, screenStyles } from '../src/theme';
-
-const homeCover = require('../assets/place-home.jpg');
-const officeCover = require('../assets/place-office.jpg');
-const storageCover = require('../assets/place-storage.jpg');
-
-function coverFor(name: string) {
-  if (name === '우리 집' || name === '본가') return homeCover;
-  if (name === '회사' || name === '사무실') return officeCover;
-  return storageCover;
-}
 
 export default function HomeScreen() {
   return (
@@ -42,6 +34,9 @@ function HomePlaces() {
   const [childFolders, setChildFolders] = useState<Awaited<ReturnType<typeof listRootChildFolders>>>([]);
   const [attempt, setAttempt] = useState(0);
   const [newLocation, setNewLocation] = useState<string>();
+  const [cover, setCover] = useState<PlaceCover>();
+  const [picking, setPicking] = useState(false);
+  const [coverError, setCoverError] = useState<string>();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const pending = useRef(false);
@@ -65,6 +60,29 @@ function HomePlaces() {
     return () => { active = false; };
   }, [attempt]));
 
+  async function chooseCover(source: 'camera' | 'album') {
+    if (pending.current) return;
+    pending.current = true;
+    setPicking(true);
+    setCoverError(undefined);
+    try {
+      const photo = await pickItemPhoto(source);
+      if (photo) setCover({ photo });
+    } catch (error) {
+      setCoverError(error instanceof Error ? error.message : '사진을 열지 못했어요.');
+    } finally {
+      pending.current = false;
+      setPicking(false);
+    }
+  }
+
+  function resetPlaceForm() {
+    setNewLocation(undefined);
+    setCover(undefined);
+    setCoverError(undefined);
+    setSaveError(false);
+  }
+
   async function saveLocation() {
     const name = newLocation?.trim();
     if (!name || pending.current) return;
@@ -72,9 +90,9 @@ function HomePlaces() {
     setSaving(true);
     setSaveError(false);
     try {
-      const folder = await createRootFolder(name);
+      const folder = cover ? await createRootFolder(name, cover) : await createRootFolder(name);
       setPlaces((previous) => [...(previous ?? []), folder]);
-      setNewLocation(undefined);
+      resetPlaceForm();
     } catch {
       setSaveError(true);
     } finally {
@@ -107,19 +125,59 @@ function HomePlaces() {
             returnKeyType="done"
             style={styles.input}
           />
+          <Text style={styles.addLabel}>장소 커버 · 선택</Text>
+          <View style={styles.coverChoices}>
+            {placeCovers.map((preset) => {
+              const selected = cover && 'preset' in cover && cover.preset === preset.id;
+              return (
+                <Pressable
+                  key={preset.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={preset.name + ' 커버'}
+                  accessibilityState={{ selected: Boolean(selected) }}
+                  disabled={picking || saving}
+                  onPress={() => {
+                    setCover({ preset: preset.id });
+                    setCoverError(undefined);
+                  }}
+                  style={[styles.coverChoice, selected && styles.selectedCoverChoice]}
+                >
+                  <Image source={preset.image} style={styles.coverChoiceImage} resizeMode="cover" />
+                  <Text style={styles.coverChoiceLabel}>{preset.name}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {cover && 'photo' in cover && (
+            <Image accessible accessibilityLabel="선택한 장소 사진" source={{ uri: cover.photo.uri }} style={styles.coverChoiceImage} />
+          )}
+          <View style={styles.coverChoices}>
+            <Pressable accessibilityRole="button" disabled={picking || saving} onPress={() => chooseCover('camera')} style={styles.action}>
+              <Text style={styles.addLabel}>사진 찍기</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" disabled={picking || saving} onPress={() => chooseCover('album')} style={styles.action}>
+              <Text style={styles.addLabel}>앨범에서 선택</Text>
+            </Pressable>
+            {cover && (
+              <Pressable accessibilityRole="button" disabled={picking || saving} onPress={() => {
+                setCover(undefined);
+                setCoverError(undefined);
+              }} style={styles.action}>
+                <Text style={styles.addLabel}>커버 제거</Text>
+              </Pressable>
+            )}
+          </View>
+          {coverError && <Text accessibilityRole="alert" style={screenStyles.body}>{coverError}</Text>}
           {saveError && <Text accessibilityRole="alert" style={screenStyles.body}>장소를 저장하지 못했어요. 다시 시도해 주세요.</Text>}
           <View style={styles.formActions}>
-            <Pressable accessibilityRole="button" disabled={saving} onPress={() => {
-              setNewLocation(undefined);
-              setSaveError(false);
-            }} style={styles.action}>
+            <Pressable accessibilityRole="button" disabled={picking || saving} onPress={resetPlaceForm} style={styles.action}>
               <Text style={styles.addLabel}>취소</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              disabled={saving || !newLocation.trim()}
+              disabled={picking || saving || !newLocation.trim()}
               onPress={saveLocation}
-              style={[styles.action, styles.save, (saving || !newLocation.trim()) && styles.disabled]}
+              style={[styles.action, styles.save, (picking || saving || !newLocation.trim()) && styles.disabled]}
             >
               <Text style={styles.saveLabel}>장소 저장</Text>
             </Pressable>
@@ -143,6 +201,7 @@ function HomePlaces() {
             const folders = childFolders.filter((folder) => folder.locationId === place.id);
             const previews = recentItems.filter((item) => item.locationId === place.id);
             const itemCount = previews[0]?.itemCount ?? 0;
+            const coverImage = placeCoverImage(place.coverPath);
             return (
               <View key={place.id} style={styles.placeRow} testID="home-place-row">
                 {editingId === place.id ? (
@@ -166,7 +225,7 @@ function HomePlaces() {
                   <>
                     <View style={styles.placeMain}>
                       <View style={styles.placeCover} importantForAccessibility="no-hide-descendants">
-                        <Image source={coverFor(place.name)} resizeMode="cover" style={styles.coverImage} />
+                        <Image source={coverImage} resizeMode="cover" style={styles.coverImage} />
                       </View>
                       <View style={styles.placeContent}>
                       <View style={previews.length ? styles.placeDetailsWithPreviews : styles.placeDetails}>
@@ -321,6 +380,11 @@ const styles = StyleSheet.create({
   },
   addLabel: { color: '#2D6654', fontSize: 14, fontWeight: '700' },
   form: { gap: 8, padding: 14, backgroundColor: '#EAF2EA', borderRadius: 14 },
+  coverChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  coverChoice: { alignItems: 'center', gap: 4, padding: 5, borderWidth: 1, borderColor: 'transparent', borderRadius: 10 },
+  selectedCoverChoice: { backgroundColor: colors.surface, borderColor: '#2D6654' },
+  coverChoiceImage: { width: 48, height: 48, borderRadius: 8 },
+  coverChoiceLabel: { color: colors.muted, fontSize: 11 },
   input: { minHeight: 44, paddingHorizontal: 12, borderRadius: 10, backgroundColor: colors.surface, color: colors.text, fontSize: 16 },
   formActions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8 },
   action: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 10 },
