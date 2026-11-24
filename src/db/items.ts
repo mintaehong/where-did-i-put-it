@@ -49,14 +49,22 @@ export async function saveItemNote(id: string, note: string) {
   return value;
 }
 
-export async function searchItems(name: string) {
+export async function searchItems(name: string, locationId: string) {
   const query = name.trim();
   if (!query) return [];
 
   const db = await getStorage();
   const items = await db.getAllAsync<Item & { folderId: string }>(
-    `SELECT ${itemColumns}, items.folder_id AS folderId ${itemTables}
-     WHERE instr(lower(items.name), lower(?)) > 0 ORDER BY items.name, items.id`,
+    `WITH RECURSIVE location_folders(id) AS (
+       SELECT id FROM folders WHERE id = ?
+       UNION
+       SELECT folders.id FROM folders JOIN location_folders ON folders.parent_id = location_folders.id
+     )
+     SELECT ${itemColumns}, items.folder_id AS folderId ${itemTables}
+     WHERE items.folder_id IN (SELECT id FROM location_folders)
+       AND instr(lower(items.name), lower(?)) > 0
+     ORDER BY items.name, items.id`,
+    locationId,
     query,
   );
   return withItemPaths(items);

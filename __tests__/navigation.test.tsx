@@ -294,19 +294,31 @@ test('보관함에서 물건 이름 일부를 입력하면 바로 결과가 나�
     id: 'sticker', name: '스티커', photoPath: null, folderId: 'closet',
     path: [{ id: 'home', name: '우리 집' }, { id: 'closet', name: '옷장' }],
   };
-  jest.mocked(searchItems).mockResolvedValueOnce([]).mockResolvedValueOnce([item]);
+  const officeItem = {
+    id: 'office-sticker', name: '스티커 봉투', photoPath: null, folderId: 'office',
+    path: [{ id: 'office', name: '회사' }],
+  };
+  jest.mocked(searchItems)
+    .mockResolvedValueOnce([]).mockResolvedValueOnce([item])
+    .mockResolvedValueOnce([officeItem]).mockResolvedValueOnce([item]);
   jest.mocked(getItemDetails).mockResolvedValueOnce({ ...item, note: null });
-  jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }]);
+  jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }, { id: 'office', name: '회사' }]);
   await renderRouter({ storage: StorageScreen, 'item/[id]': ItemScreen }, { initialUrl: '/storage' });
 
-  const input = screen.getByLabelText('물건 이름 검색');
+  const input = await screen.findByLabelText('물건 이름 검색');
   expect(screen.queryByRole('button', { name: '물어보기' })).toBeNull();
   await fireEvent.changeText(input, '없는 물건');
   expect(await screen.findByText(/해당하는 물건이 없어요/)).toBeOnTheScreen();
 
   await fireEvent.changeText(input, ' 스티 ');
   expect(await screen.findByText('우리 집 › 옷장')).toBeOnTheScreen();
-  expect(searchItems).toHaveBeenLastCalledWith('스티');
+  expect(searchItems).toHaveBeenLastCalledWith('스티', 'home');
+  await fireEvent.press(screen.getByRole('button', { name: '회사' }));
+  expect(screen.queryByText('우리 집 › 옷장')).toBeNull();
+  expect(await screen.findByRole('link', { name: /스티커 봉투/ })).toBeOnTheScreen();
+  expect(searchItems).toHaveBeenLastCalledWith('스티', 'office');
+  await fireEvent.press(screen.getByRole('button', { name: '우리 집' }));
+  expect(await screen.findByText('우리 집 › 옷장')).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('link', { name: /스티커/ }));
   expect(screen).toHavePathname('/item/sticker');
   expect(await screen.findByRole('button', { name: '스티커 이름 변경' })).toBeOnTheScreen();

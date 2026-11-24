@@ -37,7 +37,6 @@ export default function StorageScreen() {
 
   return (
     <ScrollView contentContainerStyle={screenStyles.content} keyboardShouldPersistTaps="handled">
-      <ItemSearch />
       {roots.length > 1 && (
         <View style={styles.locations}>
           {roots.map((folder) => {
@@ -57,6 +56,7 @@ export default function StorageScreen() {
         </View>
       )}
       <Text accessibilityRole="header" style={screenStyles.heading}>{selected?.name ?? '보관 장소'}</Text>
+      {selected && <ItemSearch locationId={selected.id} />}
       {result.status === 'loading' && <ActivityIndicator accessibilityLabel="보관함 불러오는 중" />}
       {result.status === 'error' && (
         <>

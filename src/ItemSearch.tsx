@@ -6,30 +6,31 @@ import { searchItems } from './db/items';
 import ItemResult from './ItemResult';
 import { colors } from './theme';
 
-export default function ItemSearch() {
+export default function ItemSearch({ locationId }: { locationId: string }) {
   const [input, setInput] = useState('');
   const query = input.trim();
   const [attempt, setAttempt] = useState(0);
   const [response, setResponse] = useState<{
     query: string;
+    locationId: string;
     items: Awaited<ReturnType<typeof searchItems>> | null;
   }>();
-  const result = response?.query === query ? response : undefined;
+  const result = response?.query === query && response.locationId === locationId ? response : undefined;
 
   useFocusEffect(useCallback(() => {
     if (!query) return;
     let active = true;
     const timer = setTimeout(() => {
-      searchItems(query).then(
-        (items) => { if (active) setResponse({ query, items }); },
-        () => { if (active) setResponse({ query, items: null }); },
+      searchItems(query, locationId).then(
+        (items) => { if (active) setResponse({ query, locationId, items }); },
+        () => { if (active) setResponse({ query, locationId, items: null }); },
       );
     }, 180);
     return () => {
       active = false;
       clearTimeout(timer);
     };
-  }, [query, attempt]));
+  }, [query, locationId, attempt]));
 
   return (
     <View style={styles.section}>
