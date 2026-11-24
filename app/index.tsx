@@ -6,7 +6,6 @@ import EditableName from '../src/EditableName';
 import { createRootFolder, listRootFolders, renameFolder } from '../src/db/folders';
 import { listRecentItems } from '../src/db/items';
 import { ItemCollection } from '../src/FolderItems';
-import ItemSearch from '../src/ItemSearch';
 import { colors, screenStyles } from '../src/theme';
 
 export default function HomeScreen() {
@@ -16,7 +15,12 @@ export default function HomeScreen() {
         {'어디에 뒀더라? 👋\n엄마가 기억해 줄게.'}
       </Text>
       <Text style={styles.description}>소중한 물건들, 여기 차곡차곡 모아두자.</Text>
-      <ItemSearch mode="question" />
+      <Link href="/ask" asChild>
+        <Pressable accessibilityRole="link" style={styles.askEntry}>
+          <Text style={styles.askLabel}>엄마에게 물어보기</Text>
+          <Text importantForAccessibility="no" style={styles.askLabel}>›</Text>
+        </Pressable>
+      </Link>
       <HomePlaces />
       <RecentItems />
     </ScrollView>
@@ -218,6 +222,8 @@ const styles = StyleSheet.create({
     marginTop: 9,
     marginBottom: 24,
   },
+  askEntry: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, minHeight: 52, padding: 14, borderRadius: 14, backgroundColor: '#2D6654' },
+  askLabel: { color: colors.surface, fontSize: 16, fontWeight: '700' },
   places: {
     marginTop: 24,
     gap: 12,

@@ -36,7 +36,7 @@ export default function StorageScreen() {
 
   return (
     <ScrollView contentContainerStyle={screenStyles.content} keyboardShouldPersistTaps="handled">
-      <ItemSearch mode="search" />
+      <ItemSearch />
       <Text accessibilityRole="header" style={screenStyles.heading}>{selected?.name ?? '보관 장소'}</Text>
       {result.status === 'loading' && <ActivityIndicator accessibilityLabel="보관함 불러오는 중" />}
       {result.status === 'error' && (
