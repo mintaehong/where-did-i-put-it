@@ -327,8 +327,11 @@ test('홈에서 대화 화면을 열고 여러 질문을 보낸 뒤 물건 상�
   });
 
   expect(screen.queryByLabelText('질문 입력')).toBeNull();
+  expect(screen.getByRole('tab', { name: '홈', selected: true })).toBeOnTheScreen();
+  expect(screen.queryByRole('tab', { name: '내 정보' })).toBeNull();
   await fireEvent.press(screen.getByRole('link', { name: /엄마에게 물어보기/ }));
   expect(screen).toHavePathname('/ask');
+  expect(screen.getByRole('tab', { name: '물어보기', selected: true })).toBeOnTheScreen();
   const input = screen.getByLabelText('질문 입력');
   expect(screen.queryByLabelText('물건 이름 검색')).toBeNull();
   await fireEvent.changeText(input, '야 스티커 어딨냐');
@@ -350,8 +353,20 @@ test('홈에서 대화 화면을 열고 여러 질문을 보낸 뒤 물건 상�
   await fireEvent.press(screen.getByRole('link', { name: /스티커/ }));
   expect(screen).toHavePathname('/item/sticker');
   expect(await screen.findByRole('button', { name: '스티커 이름 변경' })).toBeOnTheScreen();
+  expect(screen.getByRole('tab', { name: '물어보기', selected: true })).toBeOnTheScreen();
+  expect(screen.getAllByRole('tab')).toHaveLength(3);
   await act(() => router.back());
   expect(screen.getByText('야 스티커 어딨냐')).toBeOnTheScreen();
+  jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }, { id: 'office', name: '회사' }]);
+  await fireEvent.press(screen.getByRole('tab', { name: '보관함' }));
+  expect(screen).toHavePathname('/storage');
+  expect(screen.getByRole('tab', { name: '보관함', selected: true })).toBeOnTheScreen();
+  expect(await screen.findByRole('button', { name: '우리 집', selected: true })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: '회사' }));
+  expect(await screen.findByRole('header', { name: '회사' })).toBeOnTheScreen();
+  expect(screen.getByRole('button', { name: '회사', selected: true })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('tab', { name: '홈' }));
+  expect(screen).toHavePathname('/');
 });
 
 test.each([

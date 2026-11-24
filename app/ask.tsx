@@ -1,6 +1,5 @@
 import { useRef, useState, type ComponentRef } from 'react';
 import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { askForItems } from '../src/db/items';
 import ItemResult from '../src/ItemResult';
@@ -37,59 +36,57 @@ export default function AskScreen() {
   }
 
   return (
-    <SafeAreaView edges={['bottom']} style={styles.screen}>
-      <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          ref={conversation}
-          contentContainerStyle={styles.history}
-          keyboardShouldPersistTaps="handled"
-          onContentSizeChange={() => {
-            if (turns.length > 0) conversation.current?.scrollToEnd({ animated: true });
-          }}
-        >
-          <View style={styles.answer}>
-            <Text style={styles.sender}>엄마</Text>
-            <Text style={styles.answerText}>뭐 찾고 있어?</Text>
-          </View>
-          {turns.map(({ question, results }, index) => (
-            <View key={index} style={styles.turn}>
-              <View style={styles.question}>
-                <Text style={styles.questionText}>{question}</Text>
-              </View>
-              <View style={styles.answer}>
-                <Text style={styles.sender}>엄마</Text>
-                {results === undefined ? (
-                  <ActivityIndicator accessibilityLabel="물건 찾는 중" style={styles.pending} />
-                ) : (
-                  <Text accessibilityLiveRegion="polite" style={styles.answerText}>{answerFor(results)}</Text>
-                )}
-              </View>
-              {results?.map((item) => <ItemResult key={item.id} item={item} />)}
-            </View>
-          ))}
-        </ScrollView>
-        <View style={styles.composer}>
-          <TextInput
-            accessibilityLabel="질문 입력"
-            placeholder="예: 스티커 어딨어?"
-            placeholderTextColor={colors.muted}
-            value={draft}
-            onChangeText={setDraft}
-            onSubmitEditing={send}
-            returnKeyType="send"
-            style={styles.input}
-          />
-          <Pressable
-            accessibilityRole="button"
-            disabled={!canSend}
-            onPress={send}
-            style={({ pressed }) => [styles.send, (!canSend || pressed) && styles.dimmed]}
-          >
-            <Text style={styles.sendText}>물어보기</Text>
-          </Pressable>
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView
+        ref={conversation}
+        contentContainerStyle={styles.history}
+        keyboardShouldPersistTaps="handled"
+        onContentSizeChange={() => {
+          if (turns.length > 0) conversation.current?.scrollToEnd({ animated: true });
+        }}
+      >
+        <View style={styles.answer}>
+          <Text style={styles.sender}>엄마</Text>
+          <Text style={styles.answerText}>뭐 찾고 있어?</Text>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        {turns.map(({ question, results }, index) => (
+          <View key={index} style={styles.turn}>
+            <View style={styles.question}>
+              <Text style={styles.questionText}>{question}</Text>
+            </View>
+            <View style={styles.answer}>
+              <Text style={styles.sender}>엄마</Text>
+              {results === undefined ? (
+                <ActivityIndicator accessibilityLabel="물건 찾는 중" style={styles.pending} />
+              ) : (
+                <Text accessibilityLiveRegion="polite" style={styles.answerText}>{answerFor(results)}</Text>
+              )}
+            </View>
+            {results?.map((item) => <ItemResult key={item.id} item={item} />)}
+          </View>
+        ))}
+      </ScrollView>
+      <View style={styles.composer}>
+        <TextInput
+          accessibilityLabel="질문 입력"
+          placeholder="예: 스티커 어딨어?"
+          placeholderTextColor={colors.muted}
+          value={draft}
+          onChangeText={setDraft}
+          onSubmitEditing={send}
+          returnKeyType="send"
+          style={styles.input}
+        />
+        <Pressable
+          accessibilityRole="button"
+          disabled={!canSend}
+          onPress={send}
+          style={({ pressed }) => [styles.send, (!canSend || pressed) && styles.dimmed]}
+        >
+          <Text style={styles.sendText}>물어보기</Text>
+        </Pressable>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
