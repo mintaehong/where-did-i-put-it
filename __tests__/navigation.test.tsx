@@ -8,8 +8,8 @@ import FolderScreen from '../app/folder/[id]';
 import HomeScreen from '../app/index';
 import ItemScreen from '../app/item/[id]';
 import StorageScreen from '../app/storage';
-import { createChildFolder, createRootFolder, deleteEmptyChildFolder, listChildFolders, listRootFolders, renameFolder } from '../src/db/folders';
-import { askForItems, attachItemPhoto, createItem, deleteItem, getItemDetails, listItems, listRecentItems, moveItem, removeItemPhoto, renameItem, replaceItemPhoto, saveItemNote, searchItems } from '../src/db/items';
+import { createChildFolder, createRootFolder, deleteEmptyChildFolder, listChildFolders, listRootChildFolders, listRootFolders, renameFolder } from '../src/db/folders';
+import { askForItems, attachItemPhoto, createItem, deleteItem, getItemDetails, listItems, listRecentItemsByLocation, moveItem, removeItemPhoto, renameItem, replaceItemPhoto, saveItemNote, searchItems } from '../src/db/items';
 
 jest.mock('../src/db/items', () => ({
   createItem: jest.fn(),
@@ -24,7 +24,7 @@ jest.mock('../src/db/items', () => ({
   renameItem: jest.fn(),
   saveItemNote: jest.fn(),
   listItems: jest.fn(async () => []),
-  listRecentItems: jest.fn(async () => []),
+  listRecentItemsByLocation: jest.fn(async () => []),
 }));
 jest.mock('expo-image-picker', () => ({
   launchCameraAsync: jest.fn(),
@@ -66,6 +66,7 @@ beforeEach(() => {
 
 jest.mock('../src/db/folders', () => ({
   listRootFolders: jest.fn(),
+  listRootChildFolders: jest.fn(async () => []),
   createChildFolder: jest.fn(),
   createRootFolder: jest.fn(),
   deleteEmptyChildFolder: jest.fn(),
@@ -499,18 +500,30 @@ test('내용이 남은 위치는 삭제할 수 없고 빈 위치를 삭제하면
   expect(screen.queryByRole('link', { name: '안방' })).toBeNull();
 });
 
-test('홈에서 최근 추가한 물건을 열고 돌아오면 목록이 갱신된다', async () => {
+test('홈에서 최근 물건이 장소별로 보이고 상세에서 돌아오면 갱신된다', async () => {
   const home = { id: 'home', name: '우리 집' };
-  const item = { id: 'watch', name: '시계', photoPath: 'images/watch.jpg' };
-  jest.mocked(listRootFolders).mockResolvedValue([home]);
-  jest.mocked(listRecentItems)
-    .mockResolvedValueOnce([item])
-    .mockResolvedValueOnce([{ id: 'passport', name: '여권', photoPath: null }, item]);
+  const item = { id: 'watch', name: '시계', photoPath: 'images/watch.jpg', locationId: 'home', itemCount: 2 };
+  const pen = { id: 'pen', name: '볼펜', photoPath: null, locationId: 'office', itemCount: 1 };
+  jest.mocked(listRootFolders).mockResolvedValue([home, { id: 'office', name: '회사' }, { id: 'warehouse', name: '창고' }]);
+  jest.mocked(listRootChildFolders).mockResolvedValueOnce([{ id: 'bedroom', name: '안방', locationId: 'home' }]);
+  jest.mocked(listRecentItemsByLocation)
+    .mockResolvedValueOnce([item, pen])
+    .mockResolvedValueOnce([
+      { id: 'passport', name: '여권', photoPath: null, locationId: 'home', itemCount: 2 },
+      { ...item, itemCount: 2 },
+      pen,
+    ]);
   jest.mocked(getItemDetails).mockResolvedValueOnce({ ...item, folderId: home.id, path: [home], note: null });
-  await renderRouter({ index: HomeScreen, 'item/[id]': ItemScreen });
+  await renderRouter({ index: HomeScreen, storage: StorageScreen, 'item/[id]': ItemScreen });
 
-  expect(await screen.findByRole('header', { name: '최근 추가한 물건' })).toBeOnTheScreen();
-  await fireEvent.press(screen.getByRole('link', { name: '시계' }));
+  const [homeRow, officeRow, emptyRow] = await screen.findAllByTestId('home-place-row');
+  const watch = await within(homeRow).findByRole('link', { name: '시계' });
+  expect(within(homeRow).getByText('안방')).toBeOnTheScreen();
+  expect(within(homeRow).getByText('+1')).toBeOnTheScreen();
+  expect(within(officeRow).getByRole('link', { name: '볼펜' })).toBeOnTheScreen();
+  expect(within(officeRow).queryByRole('link', { name: '시계' })).toBeNull();
+  expect(within(emptyRow).getAllByRole('link')).toHaveLength(2);
+  await fireEvent.press(watch);
   expect(screen).toHavePathname('/item/watch');
   expect(await screen.findByLabelText('시계 사진')).toBeOnTheScreen();
   await act(() => router.back());

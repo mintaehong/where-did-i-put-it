@@ -1,12 +1,22 @@
 import { Link, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import EditableName from '../src/EditableName';
-import { createRootFolder, listRootFolders, renameFolder } from '../src/db/folders';
-import { listRecentItems } from '../src/db/items';
-import { ItemCollection } from '../src/FolderItems';
+import { createRootFolder, listRootChildFolders, listRootFolders, renameFolder } from '../src/db/folders';
+import { listRecentItemsByLocation } from '../src/db/items';
+import { itemPhotoUri } from '../src/itemPhotoFiles';
 import { colors, screenStyles } from '../src/theme';
+
+const homeCover = require('../assets/place-home.jpg');
+const officeCover = require('../assets/place-office.jpg');
+const storageCover = require('../assets/place-storage.jpg');
+
+function coverFor(name: string) {
+  if (name === '우리 집' || name === '본가') return homeCover;
+  if (name === '회사' || name === '사무실') return officeCover;
+  return storageCover;
+}
 
 export default function HomeScreen() {
   return (
@@ -22,42 +32,14 @@ export default function HomeScreen() {
         </Pressable>
       </Link>
       <HomePlaces />
-      <RecentItems />
     </ScrollView>
-  );
-}
-
-function RecentItems() {
-  const [items, setItems] = useState<Awaited<ReturnType<typeof listRecentItems>> | null>();
-  const [attempt, setAttempt] = useState(0);
-
-  useFocusEffect(useCallback(() => {
-    let active = true;
-    listRecentItems().then(
-      (rows) => { if (active) setItems(rows); },
-      () => { if (active) setItems(null); },
-    );
-    return () => { active = false; };
-  }, [attempt]));
-
-  if (items === undefined || items?.length === 0) return null;
-
-  return (
-    <View style={styles.places}>
-      <Text accessibilityRole="header" style={styles.sectionTitle}>최근 추가한 물건</Text>
-      {items === null ? (
-        <Pressable accessibilityRole="button" onPress={() => setAttempt((value) => value + 1)}>
-          <Text style={styles.link}>최근 물건 다시 불러오기</Text>
-        </Pressable>
-      ) : (
-        <ItemCollection items={items} isList={false} />
-      )}
-    </View>
   );
 }
 
 function HomePlaces() {
   const [places, setPlaces] = useState<Awaited<ReturnType<typeof listRootFolders>> | null>();
+  const [recentItems, setRecentItems] = useState<Awaited<ReturnType<typeof listRecentItemsByLocation>>>([]);
+  const [childFolders, setChildFolders] = useState<Awaited<ReturnType<typeof listRootChildFolders>>>([]);
   const [attempt, setAttempt] = useState(0);
   const [newLocation, setNewLocation] = useState<string>();
   const [saving, setSaving] = useState(false);
@@ -71,6 +53,14 @@ function HomePlaces() {
     listRootFolders().then(
       (folders) => { if (active) setPlaces(folders); },
       () => { if (active) setPlaces(null); },
+    );
+    listRecentItemsByLocation().then(
+      (rows) => { if (active) setRecentItems(rows); },
+      () => { if (active) setRecentItems([]); },
+    );
+    listRootChildFolders().then(
+      (rows) => { if (active) setChildFolders(rows); },
+      () => { if (active) setChildFolders([]); },
     );
     return () => { active = false; };
   }, [attempt]));
@@ -149,52 +139,104 @@ function HomePlaces() {
         <Text style={screenStyles.body}>아직 등록된 보관 장소가 없어요.</Text>
       ) : (
         <View style={styles.placeList}>
-          {places.map((place) => (
-            <View key={place.id} style={styles.placeRow}>
-              {editingId === place.id ? (
-                <View style={styles.placeEditor}>
-                  <EditableName
-                    id={place.id}
-                    name={place.name}
-                    inputLabel="새 장소 이름"
-                    inputStyle={styles.placeName}
-                    persistName={renameFolder}
-                    startEditing
-                    onCancel={() => setEditingId(undefined)}
-                    onSaved={(name) => {
-                      setPlaces((previous) => previous && previous.map((entry) =>
-                        entry.id === place.id ? { ...entry, name } : entry));
-                      setEditingId(undefined);
-                    }}
-                  />
-                </View>
-              ) : (
-                <>
-                  <Link href={{ pathname: '/storage', params: { locationId: place.id } }} asChild>
-                    <Pressable
-                      accessibilityRole="link"
-                      accessibilityLabel={place.name}
-                      style={({ pressed }) => [styles.placeLink, pressed && styles.placePressed]}
-                    >
-                      <Text numberOfLines={1} style={[styles.placeName, styles.centeredPlaceName]}>{place.name}</Text>
-                      <Text importantForAccessibility="no" style={styles.placeArrow}>›</Text>
-                    </Pressable>
-                  </Link>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={place.name + ' 이름 변경'}
-                    disabled={newLocation !== undefined || Boolean(editingPlace)}
-                    onPress={() => setEditingId(place.id)}
-                    style={({ pressed }) => [styles.editPlace, pressed && styles.placePressed]}
-                  >
-                    <Text style={styles.editIcon}>✎</Text>
-                  </Pressable>
-                </>
-              )}
-            </View>
-          ))}
+          {places.map((place) => {
+            const folders = childFolders.filter((folder) => folder.locationId === place.id);
+            const previews = recentItems.filter((item) => item.locationId === place.id);
+            const itemCount = previews[0]?.itemCount ?? 0;
+            return (
+              <View key={place.id} style={styles.placeRow} testID="home-place-row">
+                {editingId === place.id ? (
+                  <View style={styles.placeEditor}>
+                    <EditableName
+                      id={place.id}
+                      name={place.name}
+                      inputLabel="새 장소 이름"
+                      inputStyle={styles.placeName}
+                      persistName={renameFolder}
+                      startEditing
+                      onCancel={() => setEditingId(undefined)}
+                      onSaved={(name) => {
+                        setPlaces((previous) => previous && previous.map((entry) =>
+                          entry.id === place.id ? { ...entry, name } : entry));
+                        setEditingId(undefined);
+                      }}
+                    />
+                  </View>
+                ) : (
+                  <>
+                    <View style={styles.placeMain}>
+                      <View style={styles.placeCover} importantForAccessibility="no-hide-descendants">
+                        <Image source={coverFor(place.name)} resizeMode="cover" style={styles.coverImage} />
+                      </View>
+                      <View style={styles.placeContent}>
+                      <View style={previews.length ? styles.placeDetailsWithPreviews : styles.placeDetails}>
+                          <Link href={{ pathname: '/storage', params: { locationId: place.id } }} style={styles.placeName} numberOfLines={2}>
+                            {place.name}
+                          </Link>
+                          {itemCount > 0 && <Text style={styles.placeCount}>물건 {itemCount}개</Text>}
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={place.name + ' 이름 변경'}
+                            disabled={newLocation !== undefined || Boolean(editingPlace)}
+                            onPress={() => setEditingId(place.id)}
+                            style={styles.editPlace}
+                          >
+                            <Text style={styles.editIcon}>✎</Text>
+                          </Pressable>
+                        </View>
+                        <RecentPreviews items={previews} />
+                        <Link href={{ pathname: '/storage', params: { locationId: place.id } }} asChild>
+                          <Pressable accessibilityRole="link" accessibilityLabel={place.name + ' 열기'} style={styles.arrowButton}>
+                            <Text style={styles.placeArrow}>›</Text>
+                          </Pressable>
+                        </Link>
+                      </View>
+                    </View>
+                    {folders.length > 0 && (
+                      <View style={styles.folderSummary}>
+                        <Text numberOfLines={1} style={styles.folderNames}>
+                          {folders.slice(0, 3).map((folder) => folder.name).join('  ·  ')}
+                          {folders.length > 3 ? `  +${folders.length - 3}` : ''}
+                        </Text>
+                      </View>
+                    )}
+                  </>
+                )}
+              </View>
+            );
+          })}
         </View>
       )}
+    </View>
+  );
+}
+
+function RecentPreviews({ items }: { items: Awaited<ReturnType<typeof listRecentItemsByLocation>> }) {
+  if (items.length === 0) return null;
+  const extra = items[0].itemCount - items.length;
+  return (
+    <View style={styles.previews}>
+      {items.map((item, index) => (
+        <View key={item.id} style={styles.previewSlot}>
+          <Link href={{ pathname: '/item/[id]', params: { id: item.id } }} asChild>
+            <Pressable accessibilityRole="link" accessibilityLabel={item.name} style={styles.previewItem}>
+              <View style={styles.previewMedia}>
+                {item.photoPath ? (
+                  <Image source={{ uri: itemPhotoUri(item.photoPath) }} resizeMode="cover" style={styles.previewPhoto} />
+                ) : (
+                  <Text importantForAccessibility="no">📦</Text>
+                )}
+                {extra > 0 && index === items.length - 1 && (
+                  <View style={styles.extraPreview}>
+                    <Text numberOfLines={1} style={styles.extraLabel}>+{extra}</Text>
+                  </View>
+                )}
+              </View>
+              <Text numberOfLines={1} style={styles.previewName}>{item.name}</Text>
+            </Pressable>
+          </Link>
+        </View>
+      ))}
     </View>
   );
 }
@@ -228,30 +270,44 @@ const styles = StyleSheet.create({
     marginTop: 24,
     gap: 12,
   },
-  placeList: { gap: 8 },
+  placeList: { gap: 10 },
   placeRow: {
-    minHeight: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 14,
+    minHeight: 74,
+    gap: 7,
+    padding: 10,
+    borderRadius: 16,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: '#DEE7DE',
   },
   placeHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  placeLink: { flex: 1, minWidth: 0, justifyContent: 'center', minHeight: 54, paddingLeft: 70, paddingRight: 26 },
-  editPlace: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderLeftWidth: 1, borderLeftColor: '#EAF0EA' },
-  editIcon: { color: '#486B5A', fontSize: 19 },
-  placeEditor: { flex: 1, minWidth: 0, paddingHorizontal: 10, paddingVertical: 5 },
-  placePressed: { backgroundColor: '#EDF4ED' },
+  placeMain: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+  placeCover: { width: 55, height: 55, borderRadius: 12, backgroundColor: '#E4EDE2', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  coverImage: { width: '100%', height: '100%' },
+  placeContent: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  placeDetails: { flex: 1, minWidth: 0 },
+  placeDetailsWithPreviews: { width: 60, flexShrink: 1, minWidth: 40 },
+  placeCount: { color: colors.muted, fontSize: 10, marginTop: 2 },
+  editPlace: { alignSelf: 'flex-start', minWidth: 36, minHeight: 28, justifyContent: 'center' },
+  editIcon: { color: '#698276', fontSize: 15 },
+  placeEditor: { minWidth: 0, paddingHorizontal: 3 },
   placeName: {
-    flex: 1,
     color: '#263B36',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
   },
-  centeredPlaceName: { flex: 0, textAlign: 'center' },
-  placeArrow: { position: 'absolute', right: 12, color: '#2D6654', fontSize: 20 },
+  placeArrow: { color: '#2D6654', fontSize: 20 },
+  arrowButton: { width: 24, flexShrink: 0, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  previews: { flex: 1, minWidth: 0, flexDirection: 'row', justifyContent: 'flex-end', gap: 4 },
+  previewSlot: { flex: 1, minWidth: 0, maxWidth: 44, overflow: 'hidden' },
+  previewItem: { gap: 4 },
+  previewMedia: { height: 38, borderRadius: 7, backgroundColor: '#EAF2EA', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  previewPhoto: { width: '100%', height: '100%' },
+  previewName: { width: '100%', textAlign: 'center', color: colors.muted, fontSize: 11 },
+  extraPreview: { position: 'absolute', right: 2, bottom: 2, maxWidth: '95%', paddingHorizontal: 3, borderRadius: 5, backgroundColor: '#35483E' },
+  extraLabel: { color: colors.surface, fontSize: 10, fontWeight: '700' },
+  folderSummary: { marginLeft: 64, borderRadius: 7, backgroundColor: '#EEF3EB', paddingHorizontal: 8, paddingVertical: 5 },
+  folderNames: { color: '#486454', fontSize: 11 },
   sectionTitle: {
     color: '#263B36',
     fontSize: 16,

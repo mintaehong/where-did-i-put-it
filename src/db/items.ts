@@ -18,10 +18,29 @@ export async function listItems(folderId: string) {
   );
 }
 
-export async function listRecentItems() {
+export async function listRecentItemsByLocation() {
   const db = await getStorage();
-  return db.getAllAsync<Item>(
-    `SELECT ${itemColumns} ${itemTables} ORDER BY items.created_at DESC, items.id DESC LIMIT 4`,
+  return db.getAllAsync<Item & { locationId: string; itemCount: number }>(
+    `WITH RECURSIVE location_folders(folder_id, location_id) AS (
+       SELECT id, id FROM folders WHERE parent_id IS NULL
+       UNION
+       SELECT folders.id, location_folders.location_id
+       FROM folders JOIN location_folders ON folders.parent_id = location_folders.folder_id
+     ),
+     ranked_items AS (
+       SELECT items.id, items.name, location_folders.location_id,
+         COUNT(*) OVER (PARTITION BY location_folders.location_id) AS item_count,
+         ROW_NUMBER() OVER (
+           PARTITION BY location_folders.location_id ORDER BY items.created_at DESC, items.id DESC
+         ) AS position
+       FROM items JOIN location_folders ON items.folder_id = location_folders.folder_id
+     )
+     SELECT ranked_items.id, ranked_items.name, ranked_items.location_id AS locationId,
+            ranked_items.item_count AS itemCount,
+            item_images.relative_path AS photoPath
+     FROM ranked_items LEFT JOIN item_images ON item_images.item_id = ranked_items.id
+     WHERE ranked_items.position <= 3
+     ORDER BY ranked_items.location_id, ranked_items.position`,
   );
 }
 

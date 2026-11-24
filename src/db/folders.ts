@@ -64,6 +64,16 @@ export async function listChildFolders(parentId: string) {
   );
 }
 
+export async function listRootChildFolders() {
+  const db = await getStorage();
+  return db.getAllAsync<{ id: string; name: string; locationId: string }>(
+    `SELECT child.id, child.name, parent.id AS locationId
+     FROM folders AS child JOIN folders AS parent ON child.parent_id = parent.id
+     WHERE parent.parent_id IS NULL
+     ORDER BY child.created_at, child.id`,
+  );
+}
+
 export function createChildFolder(parentId: string, name: string) {
   return createFolder(parentId, name);
 }
