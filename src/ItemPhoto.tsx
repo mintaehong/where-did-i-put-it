@@ -66,7 +66,7 @@ export default function ItemPhoto(props: PhotoProps) {
   }
 
   return (
-    <View style={[styles.photoPanel, !displayedUri && styles.emptyPhoto]}>
+    <View style={styles.photoPanel}>
       {displayedUri && (
         displayedUri === failedUri ? (
           <View style={styles.placeholder}>
@@ -121,7 +121,7 @@ export default function ItemPhoto(props: PhotoProps) {
           </View>
       ) : !previousPath || showSources ? (
         <>
-          {!previousPath && <Text style={styles.label}>사진 추가</Text>}
+          {!previousPath && <Text accessibilityRole="header" style={styles.label}>사진 추가</Text>}
           <View style={styles.photoChoices}>
             <Pressable
               accessibilityRole="button"
@@ -129,7 +129,8 @@ export default function ItemPhoto(props: PhotoProps) {
               onPress={() => choose('camera')}
               style={({ pressed }) => [styles.choice, (disabled || pressed) && styles.dimmed]}
             >
-              <Text style={styles.choiceLabel}>사진 찍기</Text>
+              <PhotoSourceIcon source="camera" />
+              <Text style={styles.sourceLabel}>사진 찍기</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -138,7 +139,8 @@ export default function ItemPhoto(props: PhotoProps) {
               onPress={() => choose('album')}
               style={({ pressed }) => [styles.choice, (disabled || pressed) && styles.dimmed]}
             >
-              <Text style={styles.choiceLabel}>앨범에서 선택</Text>
+              <PhotoSourceIcon source="album" />
+              <Text style={styles.sourceLabel}>앨범에서 선택</Text>
             </Pressable>
           </View>
           {previousPath && (
@@ -180,21 +182,64 @@ export default function ItemPhoto(props: PhotoProps) {
   );
 }
 
+function PhotoSourceIcon({ source }: { source: 'camera' | 'album' }) {
+  return (
+    <View style={styles.iconBadge} importantForAccessibility="no-hide-descendants">
+      <View style={styles.sourceIcon}>
+        {source === 'camera' ? (
+          <>
+            <View style={styles.cameraTop} />
+            <View style={styles.cameraBody}>
+              <View style={styles.cameraLens} />
+            </View>
+          </>
+        ) : (
+          <View style={styles.albumFrame}>
+            <View style={styles.albumSun} />
+            <View style={styles.albumMountain} />
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: 16, backgroundColor: colors.surface },
   placeholder: { padding: 20, borderRadius: 16, backgroundColor: colors.surface },
-  photoPanel: { gap: 12, padding: 14, borderRadius: 16, backgroundColor: '#EDF4ED' },
-  emptyPhoto: { borderWidth: 1, borderStyle: 'dashed', borderColor: '#A9BEAE', alignItems: 'center' },
-  photoChoices: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
+  photoPanel: { gap: 10, padding: 14, borderRadius: 16, backgroundColor: '#FFF8E9' },
+  photoChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   choice: {
-    backgroundColor: colors.surface,
-    borderColor: '#D4E2D6',
+    flexGrow: 1,
+    flexBasis: 108,
+    backgroundColor: '#FFFCF5',
+    borderColor: '#EDE1C8',
     borderWidth: 1,
-    borderRadius: 12,
-    minHeight: 44,
+    borderRadius: 14,
+    minHeight: 80,
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 13,
+    gap: 5,
+    paddingHorizontal: 6,
     paddingVertical: 8,
+  },
+  sourceLabel: { color: colors.text, fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  iconBadge: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#FFEBAA', alignItems: 'center', justifyContent: 'center' },
+  sourceIcon: { width: 22, height: 22 },
+  cameraTop: { position: 'absolute', top: 2, left: 7, width: 8, height: 5, borderWidth: 1.5, borderColor: colors.text, borderRadius: 2 },
+  cameraBody: {
+    position: 'absolute', top: 5, left: 1, width: 20, height: 15, borderWidth: 1.5,
+    borderColor: colors.text, borderRadius: 4, backgroundColor: '#FFEBAA', alignItems: 'center', justifyContent: 'center',
+  },
+  cameraLens: { width: 7, height: 7, borderRadius: 4, borderWidth: 1.5, borderColor: colors.text },
+  albumFrame: {
+    position: 'absolute', top: 3, left: 1, width: 20, height: 16,
+    borderWidth: 1.5, borderColor: colors.text, borderRadius: 3, overflow: 'hidden',
+  },
+  albumSun: { position: 'absolute', top: 2, right: 2, width: 3, height: 3, borderRadius: 2, backgroundColor: colors.text },
+  albumMountain: {
+    position: 'absolute', top: 7, left: 2, width: 11, height: 11, borderTopWidth: 1.5,
+    borderLeftWidth: 1.5, borderColor: colors.text, transform: [{ rotate: '45deg' }],
   },
   choiceLabel: { color: '#2D6654', fontSize: 14, fontWeight: '700', textAlign: 'center' },
   changePhoto: { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 },
