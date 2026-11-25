@@ -9,6 +9,7 @@ import { listRecentItemsByLocation } from '../src/db/items';
 import { itemPhotoUri } from '../src/itemPhotoFiles';
 import { pickItemPhoto } from '../src/pickItemPhoto';
 import { placeCoverImage, placeCovers, type PlaceCover } from '../src/placeCovers';
+import TabSlide from '../src/TabSlide';
 import { colors, screenStyles } from '../src/theme';
 
 export default function HomeScreen() {
@@ -16,29 +17,31 @@ export default function HomeScreen() {
   const showButtonLabel = width >= 370 && fontScale <= 1.2;
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.wordmark}>
-          <Image source={require('../assets/app-logo-header.png')} resizeMode="contain" style={styles.logo} />
-          <Text accessibilityRole="header" style={styles.heading}>어디 뒀지?</Text>
-        </View>
-        <Link href="/ask" asChild>
-          <Pressable accessibilityRole="link" accessibilityLabel="엄마에게 물어보기" style={styles.askEntry}>
-            <View style={styles.askLayout}>
-              <Image source={require('../assets/mom-banner.png')} resizeMode="contain" style={styles.momImage} />
-              <View style={styles.askCopy}>
-                <Text style={styles.askMessage}>{'뭐 찾니?\n엄마가 찾아줄게.'}</Text>
+    <TabSlide>
+      <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <View style={styles.wordmark}>
+            <Image source={require('../assets/app-logo-header.png')} resizeMode="contain" style={styles.logo} />
+            <Text accessibilityRole="header" style={styles.heading}>어디 뒀지?</Text>
+          </View>
+          <Link href="/ask" asChild>
+            <Pressable accessibilityRole="link" accessibilityLabel="엄마에게 물어보기" style={styles.askEntry}>
+              <View style={styles.askLayout}>
+                <Image source={require('../assets/mom-banner.png')} resizeMode="contain" style={styles.momImage} />
+                <View style={styles.askCopy}>
+                  <Text style={styles.askMessage}>{'뭐 찾니?\n엄마가 찾아줄게.'}</Text>
+                </View>
+                <View style={styles.askButton}>
+                  {showButtonLabel && <Text style={styles.askLabel}>엄마에게 물어보기</Text>}
+                  <Text importantForAccessibility="no" style={styles.askArrow}>→</Text>
+                </View>
               </View>
-              <View style={styles.askButton}>
-                {showButtonLabel && <Text style={styles.askLabel}>엄마에게 물어보기</Text>}
-                <Text importantForAccessibility="no" style={styles.askArrow}>→</Text>
-              </View>
-            </View>
-          </Pressable>
-        </Link>
-        <HomePlaces />
-      </ScrollView>
-    </SafeAreaView>
+            </Pressable>
+          </Link>
+          <HomePlaces />
+        </ScrollView>
+      </SafeAreaView>
+    </TabSlide>
   );
 }
 

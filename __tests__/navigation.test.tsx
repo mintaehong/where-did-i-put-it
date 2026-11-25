@@ -373,13 +373,18 @@ test('홈에서 대화 화면을 열고 여러 질문을 보낸 뒤 물건 상�
   jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }, { id: 'office', name: '회사' }]);
   await fireEvent.press(screen.getByRole('tab', { name: '보관함' }));
   expect(screen).toHavePathname('/storage');
+  expect(screen).toHaveSearchParams({ tabSlide: 'right:1' });
   expect(screen.getByRole('tab', { name: '보관함', selected: true })).toBeOnTheScreen();
   expect(await screen.findByRole('button', { name: '우리 집', selected: true })).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('button', { name: '회사' }));
   expect(await screen.findByRole('header', { name: '회사' })).toBeOnTheScreen();
   expect(screen.getByRole('button', { name: '회사', selected: true })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('tab', { name: '물어보기' }));
+  expect(screen).toHavePathname('/ask');
+  expect(screen).toHaveSearchParams({ tabSlide: 'left:2' });
   await fireEvent.press(screen.getByRole('tab', { name: '홈' }));
   expect(screen).toHavePathname('/');
+  expect(screen).toHaveSearchParams({ tabSlide: 'left:3' });
 });
 
 test.each([

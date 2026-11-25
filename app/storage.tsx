@@ -6,6 +6,7 @@ import ChildFolders from '../src/ChildFolders';
 import FolderItems from '../src/FolderItems';
 import ItemSearch from '../src/ItemSearch';
 import { listRootFolders } from '../src/db/folders';
+import TabSlide from '../src/TabSlide';
 import { colors, screenStyles } from '../src/theme';
 
 type FolderList =
@@ -37,52 +38,54 @@ export default function StorageScreen() {
   }, [attempt]));
 
   return (
-    <ScrollView contentContainerStyle={screenStyles.content} keyboardShouldPersistTaps="handled">
-      {roots.length > 1 && (
-        <View style={styles.locations}>
-          {roots.map((folder) => {
-            const active = folder.id === selected?.id;
-            return (
-              <Pressable
-                key={folder.id}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-                onPress={() => router.setParams({ locationId: folder.id, addItem: '' })}
-                style={[styles.location, active && styles.selectedLocation]}
-              >
-                <Text style={[styles.locationName, active && styles.selectedName]}>{folder.name}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      )}
-      <Text accessibilityRole="header" style={screenStyles.heading}>{selected?.name ?? '보관 장소'}</Text>
-      {selected && <ItemSearch locationId={selected.id} />}
-      {result.status === 'loading' && <ActivityIndicator accessibilityLabel="보관함 불러오는 중" />}
-      {result.status === 'error' && (
-        <>
-          <Text style={screenStyles.body}>보관함을 불러오지 못했어요.</Text>
-          <Button title="다시 시도" onPress={() => {
-            setResult({ status: 'loading' });
-            setAttempt((previous) => previous + 1);
-          }} />
-        </>
-      )}
-      {result.status === 'ready' && !selected && (
-        <Text style={screenStyles.body}>아직 등록된 보관 장소가 없어요.</Text>
-      )}
-      {selected && (
-        <>
-          <FolderItems
-            key={`items-${selected.id}`}
-            folderId={selected.id}
-            startAdding={addItem === '1' && selected.id === selectedId}
-            onAddOpened={clearAddRequest}
-          />
-          <ChildFolders key={selected.id} parentId={selected.id} />
-        </>
-      )}
-    </ScrollView>
+    <TabSlide>
+      <ScrollView contentContainerStyle={screenStyles.content} keyboardShouldPersistTaps="handled">
+        {roots.length > 1 && (
+          <View style={styles.locations}>
+            {roots.map((folder) => {
+              const active = folder.id === selected?.id;
+              return (
+                <Pressable
+                  key={folder.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => router.setParams({ locationId: folder.id, addItem: '' })}
+                  style={[styles.location, active && styles.selectedLocation]}
+                >
+                  <Text style={[styles.locationName, active && styles.selectedName]}>{folder.name}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+        <Text accessibilityRole="header" style={screenStyles.heading}>{selected?.name ?? '보관 장소'}</Text>
+        {selected && <ItemSearch locationId={selected.id} />}
+        {result.status === 'loading' && <ActivityIndicator accessibilityLabel="보관함 불러오는 중" />}
+        {result.status === 'error' && (
+          <>
+            <Text style={screenStyles.body}>보관함을 불러오지 못했어요.</Text>
+            <Button title="다시 시도" onPress={() => {
+              setResult({ status: 'loading' });
+              setAttempt((previous) => previous + 1);
+            }} />
+          </>
+        )}
+        {result.status === 'ready' && !selected && (
+          <Text style={screenStyles.body}>아직 등록된 보관 장소가 없어요.</Text>
+        )}
+        {selected && (
+          <>
+            <FolderItems
+              key={`items-${selected.id}`}
+              folderId={selected.id}
+              startAdding={addItem === '1' && selected.id === selectedId}
+              onAddOpened={clearAddRequest}
+            />
+            <ChildFolders key={selected.id} parentId={selected.id} />
+          </>
+        )}
+      </ScrollView>
+    </TabSlide>
   );
 }
 
