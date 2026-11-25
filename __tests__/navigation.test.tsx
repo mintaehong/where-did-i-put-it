@@ -59,8 +59,13 @@ test('카메라 권한을 요청하고 촬영한 사진과 메모를 함께 저�
   await fireEvent.press(screen.getByRole('button', { name: '사진 찍기' }));
   expect(await screen.findByLabelText('선택한 사진')).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('button', { name: '보관 위치 바꾸기' }));
-  await fireEvent.press(await screen.findByRole('button', { name: '우리 집' }));
-  await fireEvent.press(await screen.findByRole('button', { name: '안방' }));
+  expect(await screen.findByRole('button', { name: '우리 집, 현재 보관 위치' })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: '안방 하위 위치 펼치기' }));
+  expect(screen.getByRole('button', { name: '옷장' })).toBeOnTheScreen();
+  expect(screen.getByRole('button', { name: '이 위치 선택' })).toBeDisabled();
+  await fireEvent.press(screen.getByRole('button', { name: '안방' }));
+  expect(screen.getByRole('button', { name: '안방', selected: true })).toBeOnTheScreen();
+  expect(screen.getByRole('button', { name: '옷장' })).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('button', { name: '이 위치 선택' }));
   expect(screen.getByText('우리 집 › 안방')).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('button', { name: '물건 저장' }));
@@ -77,6 +82,12 @@ beforeEach(() => {
 
 jest.mock('../src/db/folders', () => ({
   listRootFolders: jest.fn(),
+  listFolderTree: jest.fn(async () => [
+    { id: 'home', name: '우리 집', parentId: null },
+    { id: 'bedroom', name: mockBedroomName, parentId: 'home' },
+    { id: 'closet', name: '옷장', parentId: 'bedroom' },
+    { id: 'office', name: '회사', parentId: null },
+  ]),
   listRootChildFolders: jest.fn(async () => []),
   createChildFolder: jest.fn(),
   createRootFolder: jest.fn(),
@@ -298,6 +309,7 @@ test('물건을 다른 보관 위치로 옮기면 경로와 양쪽 목록이 갱
   await fireEvent.press(await screen.findByRole('link', { name: '시계' }));
   await fireEvent.press(await screen.findByRole('button', { name: '보관 위치 바꾸기' }));
   expect(screen.getByRole('button', { name: '여기로 옮기기' })).toBeDisabled();
+  expect(await screen.findByRole('button', { name: '안방' })).toBeOnTheScreen();
   await fireEvent.press(await screen.findByRole('button', { name: '회사' }));
   await fireEvent.press(screen.getByRole('button', { name: '여기로 옮기기' }));
 

@@ -66,6 +66,13 @@ export async function listChildFolders(parentId: string) {
   );
 }
 
+export async function listFolderTree() {
+  const db = await getStorage();
+  return db.getAllAsync<{ id: string; name: string; parentId: string | null }>(
+    'SELECT id, name, parent_id AS parentId FROM folders ORDER BY created_at, id',
+  );
+}
+
 export async function listRootChildFolders() {
   const db = await getStorage();
   return db.getAllAsync<{ id: string; name: string; locationId: string }>(
