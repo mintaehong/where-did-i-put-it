@@ -210,14 +210,14 @@ function MomReply({ children, results, onLayout }: PropsWithChildren<{
 }
 
 function answerFor(items: Matches | null) {
-  if (items === null) return '이번에는 못 찾아봤네. 한 번만 다시 물어봐 줄래?';
-  if (items.length === 0) return '등록한 물건 중에는 못 찾겠네~ 이름을 넣어서 다시 물어봐 줄래?';
-  if (items.length > 1) return '찾은 물건이 몇 개 있네~ 아래에서 이름이랑 위치를 확인해 봐.';
+  if (items === null) return '찾다가 잠깐 문제가 생겼네. 한 번만 더 물어봐 줄래?';
+  if (items.length === 0) return '기록해 둔 물건 중엔 안 보이네. 이름을 조금 다르게 말해 볼래?';
+  if (items.length > 1) return '비슷한 게 몇 개 있네. 이 중에 네가 찾던 거 있어?';
   const item = items[0];
   const folder = item.path.at(-1);
   return folder
-    ? `‘${item.name}’, ${folder.name}에 있어~`
-    : `‘${item.name}’ 기록은 있는데 보관 위치는 확인할 수 없네.`;
+    ? `${item.name} 찾았다! ${folder.name}에 있어.`
+    : `${item.name} 기록은 찾았어. 어디에 뒀는지는 기록에 안 보이네.`;
 }
 
 const styles = StyleSheet.create({

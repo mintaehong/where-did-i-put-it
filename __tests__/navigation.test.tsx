@@ -351,7 +351,7 @@ test('홈에서 대화 화면을 열고 여러 질문을 보낸 뒤 물건 상�
   await fireEvent.changeText(input, '야 스티커 어딨냐');
   expect(askForItems).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByRole('button', { name: '물어보기' }));
-  expect(await screen.findByText('‘스티커’, 옷장에 있어~')).toBeOnTheScreen();
+  expect(await screen.findByText('스티커 찾았다! 옷장에 있어.')).toBeOnTheScreen();
   expect(screen.getByText('야 스티커 어딨냐')).toBeOnTheScreen();
   expect(screen.getByText('우리 집 › 옷장')).toBeOnTheScreen();
   expect(askForItems).toHaveBeenLastCalledWith('야 스티커 어딨냐');
@@ -359,7 +359,7 @@ test('홈에서 대화 화면을 열고 여러 질문을 보낸 뒤 물건 상�
 
   await fireEvent.changeText(input, '아까 쓰던 그거 어딨냐');
   await fireEvent.press(screen.getByRole('button', { name: '물어보기' }));
-  expect(await screen.findByText(/이름을 넣어서 다시 물어봐/)).toBeOnTheScreen();
+  expect(await screen.findByText(/이름을 조금 다르게 말해 볼래/)).toBeOnTheScreen();
   expect(screen.getByText('뭐 찾고 있어?')).toBeOnTheScreen();
   expect(screen.getByText('아까 쓰던 그거 어딨냐')).toBeOnTheScreen();
   expect(screen.getByText('우리 집 › 옷장')).toBeOnTheScreen();
