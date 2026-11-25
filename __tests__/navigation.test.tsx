@@ -11,6 +11,7 @@ import StorageScreen from '../app/storage';
 import { createChildFolder, createRootFolder, deleteEmptyChildFolder, listChildFolders, listRootChildFolders, listRootFolders, renameFolder } from '../src/db/folders';
 import { askForItems, attachItemPhoto, createItem, deleteItem, getItemDetails, listItems, listRecentItemsByLocation, moveItem, removeItemPhoto, renameItem, replaceItemPhoto, saveItemNote, searchItems } from '../src/db/items';
 
+jest.mock('react-native-keyboard-controller', () => jest.requireActual('react-native-keyboard-controller/jest'));
 jest.mock('../src/db/items', () => ({
   createItem: jest.fn(),
   attachItemPhoto: jest.fn(),
