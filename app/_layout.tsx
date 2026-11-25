@@ -42,6 +42,7 @@ export default function RootLayout() {
           ),
         }} />
         <Stack.Screen name="folder/[id]" dangerouslySingular options={{ title: '보관 장소' }} />
+        <Stack.Screen name="item/new" options={{ title: '물건 추가' }} />
         <Stack.Screen name="item/[id]" options={{ title: '물건 상세' }} />
       </Stack>
       <BottomNavigation />

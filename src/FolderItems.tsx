@@ -1,38 +1,20 @@
-import { Link, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Button, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Link, useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Button, Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
-import { createItem, listItems } from './db/items';
-import { itemPhotoUri, type SelectedPhoto } from './itemPhotoFiles';
-import { pickItemPhoto } from './pickItemPhoto';
+import { listItems } from './db/items';
+import { itemPhotoUri } from './itemPhotoFiles';
 import { colors, screenStyles } from './theme';
 
 const viewOptions = [{ value: 'grid', label: '카드' }, { value: 'list', label: '목록' }] as const;
 const cardsPerPage = 4;
 
-export default function FolderItems({ folderId, startAdding, onAddOpened }: {
-  folderId: string;
-  startAdding?: boolean;
-  onAddOpened?: () => void;
-}) {
+export default function FolderItems({ folderId }: { folderId: string }) {
+  const router = useRouter();
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [items, setItems] = useState<Awaited<ReturnType<typeof listItems>>>();
   const [loadError, setLoadError] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [draft, setDraft] = useState<string>();
-  const [note, setNote] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState(false);
-  const [photo, setPhoto] = useState<SelectedPhoto>();
-  const [picking, setPicking] = useState(false);
-  const [photoError, setPhotoError] = useState<string>();
-  const pending = useRef(false);
-
-  useEffect(() => {
-    if (!startAdding) return;
-    setDraft((previous) => previous ?? '');
-    onAddOpened?.();
-  }, [startAdding, onAddOpened]);
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -47,44 +29,6 @@ export default function FolderItems({ folderId, startAdding, onAddOpened }: {
     );
     return () => { active = false; };
   }, [folderId, attempt]));
-
-  async function choosePhoto(source: 'camera' | 'album') {
-    if (pending.current) return;
-    pending.current = true;
-    setPicking(true);
-    setPhotoError(undefined);
-    try {
-      setPhoto(await pickItemPhoto(source));
-    } catch (error) {
-      setPhotoError(error instanceof Error ? error.message : source === 'camera'
-        ? '카메라를 열지 못했어요. 다시 시도해 주세요.'
-        : '앨범을 열지 못했어요. 다시 시도해 주세요.');
-    } finally {
-      pending.current = false;
-      setPicking(false);
-    }
-  }
-
-  async function save() {
-    const name = draft?.trim();
-    if (!name || pending.current) return;
-    pending.current = true;
-    setSaving(true);
-    setSaveError(false);
-    try {
-      const item = await createItem(folderId, name, { photo, note });
-      setItems((previous) => [...(previous ?? []), item]);
-      setDraft(undefined);
-      setNote('');
-      setPhoto(undefined);
-      setPhotoError(undefined);
-    } catch {
-      setSaveError(true);
-    } finally {
-      pending.current = false;
-      setSaving(false);
-    }
-  }
 
   return (
     <>
@@ -126,91 +70,7 @@ export default function FolderItems({ folderId, startAdding, onAddOpened }: {
           ) : (
             <ItemCollection items={items} isList={view === 'list'} />
           )}
-          {draft === undefined ? (
-            <Button title="물건 추가" onPress={() => setDraft('')} />
-          ) : (
-            <View style={styles.form}>
-              <View style={styles.field}>
-                <Text style={styles.label}>물건 이름</Text>
-                <TextInput
-                  accessibilityLabel="물건 이름"
-                  placeholder="예: 여권"
-                  autoFocus
-                  value={draft}
-                  editable={!saving}
-                  onChangeText={setDraft}
-                  onSubmitEditing={save}
-                  returnKeyType="done"
-                  style={styles.nameInput}
-                />
-              </View>
-              <View style={styles.field}>
-                <View style={styles.row}>
-                  <Text style={styles.label}>메모</Text>
-                  <Text style={styles.optional}>선택</Text>
-                </View>
-                <TextInput
-                  accessibilityLabel="물건 메모"
-                  placeholder="예: 검은 파우치 안에 넣어 둠"
-                  placeholderTextColor={colors.muted}
-                  multiline
-                  value={note}
-                  editable={!saving}
-                  onChangeText={setNote}
-                  style={[styles.nameInput, styles.noteInput]}
-                />
-              </View>
-              <View style={[styles.field, styles.photoSection]}>
-                <View style={styles.row}>
-                  <Text style={styles.label}>사진 첨부</Text>
-                  <Text style={styles.optional}>선택</Text>
-                </View>
-                {photo ? (
-                  <View style={[styles.row, styles.photoArea]}>
-                    <Image accessibilityLabel="선택한 사진" accessible source={{ uri: photo.uri }} style={styles.preview} />
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="사진 제거"
-                      disabled={saving}
-                      onPress={() => setPhoto(undefined)}
-                      style={styles.removePhoto}
-                    >
-                      <Text style={styles.itemName}>×</Text>
-                    </Pressable>
-                  </View>
-                ) : (
-                  <View style={styles.photoChoices}>
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => choosePhoto('camera')}
-                      disabled={picking || saving}
-                      style={({ pressed }) => [styles.photoArea, styles.photoTarget, pressed && styles.photoPressed]}
-                    >
-                      <Text style={styles.photoAction}>사진 찍기</Text>
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => choosePhoto('album')}
-                      disabled={picking || saving}
-                      style={({ pressed }) => [styles.photoArea, styles.photoTarget, pressed && styles.photoPressed]}
-                    >
-                      <Text style={styles.photoAction}>앨범에서 사진 추가</Text>
-                    </Pressable>
-                  </View>
-                )}
-                {photoError && <Text accessibilityRole="alert">{photoError}</Text>}
-              </View>
-              {saveError && <Text accessibilityRole="alert">물건을 저장하지 못했어요. 다시 시도해 주세요.</Text>}
-              <Button title="물건 저장" onPress={save} disabled={picking || saving || !draft.trim()} />
-              <Button title="물건 추가 취소" disabled={picking || saving} onPress={() => {
-                setDraft(undefined);
-                setNote('');
-                setSaveError(false);
-                setPhoto(undefined);
-                setPhotoError(undefined);
-              }} />
-            </View>
-          )}
+          <Button title="물건 추가" onPress={() => router.push({ pathname: '/item/new', params: { folderId } })} />
         </>
       )}
     </>
@@ -304,45 +164,6 @@ function ItemCollection({ items, isList }: {
 }
 
 const styles = StyleSheet.create({
-  form: {
-    gap: 16,
-    padding: 16,
-    backgroundColor: colors.surface,
-    borderColor: '#DFE6DE',
-    borderWidth: 1,
-    borderRadius: 18,
-  },
-  field: { gap: 8 },
-  photoSection: {
-    backgroundColor: '#EDF4ED',
-    borderRadius: 14,
-    padding: 12,
-  },
-  label: { color: colors.text, fontSize: 14, fontWeight: '700' },
-  optional: { color: colors.muted, fontSize: 13 },
-  nameInput: {
-    backgroundColor: colors.surface,
-    borderColor: '#C9D3CA',
-    borderWidth: 1,
-    borderRadius: 12,
-    color: colors.text,
-    fontSize: 16,
-    minHeight: 48,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  noteInput: { minHeight: 64, textAlignVertical: 'top' },
-  photoArea: {
-    backgroundColor: '#FAFCF9',
-    borderColor: '#9DB3A5',
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-  },
-  photoChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  photoTarget: { flexGrow: 1, flexBasis: 112, alignItems: 'center', justifyContent: 'center', minHeight: 54 },
-  photoPressed: { backgroundColor: '#DFEDE3' },
-  photoAction: { color: '#2D6654', fontSize: 14, fontWeight: '700', textAlign: 'center' },
   heading: { color: colors.text, fontSize: 18, fontWeight: '700' },
   sectionHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   viewToggle: { flexDirection: 'row', backgroundColor: '#EAF1EA', borderRadius: 12, padding: 3 },
@@ -379,9 +200,5 @@ const styles = StyleSheet.create({
   listIcon: { fontSize: 15 },
   cardCaption: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 38, paddingHorizontal: 8, paddingVertical: 4 },
   cardName: { color: colors.text, flex: 1, fontSize: 15, fontWeight: '700' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  itemName: { color: colors.text, fontSize: 16, flexShrink: 1 },
   chevron: { color: '#5B7567', fontSize: 18 },
-  preview: { width: 80, height: 80, borderRadius: 12, backgroundColor: '#E8EFE8' },
-  removePhoto: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
 });

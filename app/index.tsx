@@ -282,7 +282,7 @@ function HomePlaces() {
                       <View style={styles.emptyPlace}>
                         <ParcelMark />
                         <Text style={styles.emptyText}>아직 보관한 물건이 없어요.</Text>
-                        <Link href={{ pathname: '/storage', params: { locationId: place.id, addItem: '1' } }} asChild>
+                        <Link href={{ pathname: '/item/new', params: { folderId: place.id } }} asChild>
                           <Pressable accessibilityRole="link" accessibilityLabel={place.name + '에 물건 추가'} style={styles.addItem}>
                             <Text style={styles.addItemLabel}>+ 물건 추가</Text>
                           </Pressable>

@@ -4,24 +4,34 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { saveItemNote } from './db/items';
 import { colors, screenStyles } from './theme';
 
-export default function ItemNote({ itemId, note, onSaved }: {
+type NoteProps = {
   itemId: string;
   note: string | null;
   onSaved: (note: string | null) => void;
-}) {
-  const [draft, setDraft] = useState<string>();
+} | {
+  note: string;
+  onChange: (note: string) => void;
+  disabled: boolean;
+};
+
+export default function ItemNote(props: NoteProps) {
+  const { note } = props;
+  const detail = 'itemId' in props ? props : undefined;
+  const creation = 'onChange' in props ? props : undefined;
+  const [editor, setDraft] = useState<string>();
+  const draft = creation?.note ?? editor;
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
   const pending = useRef(false);
   const changed = draft !== undefined && draft.trim() !== (note ?? '');
 
   async function save() {
-    if (draft === undefined || !changed || pending.current) return;
+    if (!detail || draft === undefined || !changed || pending.current) return;
     pending.current = true;
     setSaving(true);
     setFailed(false);
     try {
-      onSaved(await saveItemNote(itemId, draft));
+      detail.onSaved(await saveItemNote(detail.itemId, draft));
       setDraft(undefined);
     } catch {
       setFailed(true);
@@ -35,7 +45,7 @@ export default function ItemNote({ itemId, note, onSaved }: {
     <View style={styles.card}>
       <View style={styles.heading}>
         <Text accessibilityRole="header" style={styles.label}>메모</Text>
-        {draft === undefined ? (
+        {creation ? null : draft === undefined ? (
           <Pressable accessibilityRole="button" onPress={() => setDraft(note ?? '')} style={styles.action}>
             <Text style={styles.actionText}>{note ? '메모 수정' : '+ 메모 추가'}</Text>
           </Pressable>
@@ -58,14 +68,14 @@ export default function ItemNote({ itemId, note, onSaved }: {
         note && <Text style={screenStyles.body}>{note}</Text>
       ) : (
         <TextInput
-          accessibilityLabel="메모 내용"
+          accessibilityLabel={creation ? '물건 메모' : '메모 내용'}
           placeholder="예: 검은 파우치 안에 넣어 둠"
           placeholderTextColor={colors.muted}
-          autoFocus
+          autoFocus={Boolean(detail)}
           multiline
-          editable={!saving}
+          editable={!saving && !creation?.disabled}
           value={draft}
-          onChangeText={setDraft}
+          onChangeText={creation?.onChange ?? setDraft}
           style={styles.input}
         />
       )}

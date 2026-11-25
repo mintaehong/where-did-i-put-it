@@ -7,6 +7,7 @@ import AskScreen from '../app/ask';
 import FolderScreen from '../app/folder/[id]';
 import HomeScreen from '../app/index';
 import ItemScreen from '../app/item/[id]';
+import NewItemScreen from '../app/item/new';
 import StorageScreen from '../app/storage';
 import { createChildFolder, createRootFolder, deleteEmptyChildFolder, listChildFolders, listRootChildFolders, listRootFolders, renameFolder } from '../src/db/folders';
 import { askForItems, attachItemPhoto, createItem, deleteItem, getItemDetails, listItems, listRecentItemsByLocation, moveItem, removeItemPhoto, renameItem, replaceItemPhoto, saveItemNote, searchItems } from '../src/db/items';
@@ -45,18 +46,26 @@ test('카메라 권한을 요청하고 촬영한 사진과 메모를 함께 저�
     .mockResolvedValueOnce({ granted: true, status: PermissionStatus.GRANTED, canAskAgain: true, expires: 'never' });
   jest.mocked(launchCameraAsync).mockResolvedValue({ canceled: false, assets: [asset] });
   jest.mocked(createItem).mockResolvedValue({ id: 'camera-item', name: '시계', photoPath: 'images/camera.jpg' });
-  await renderRouter({ storage: StorageScreen }, { initialUrl: '/storage' });
+  await renderRouter({ storage: StorageScreen, 'item/new': NewItemScreen }, { initialUrl: '/storage' });
 
   await fireEvent.press(await screen.findByRole('button', { name: '물건 추가' }));
-  await fireEvent.changeText(screen.getByLabelText('물건 이름'), '시계');
+  expect(screen).toHavePathname('/item/new');
+  await fireEvent.changeText(await screen.findByLabelText('물건 이름'), '시계');
   await fireEvent.changeText(screen.getByLabelText('물건 메모'), '검은 파우치 안');
   await fireEvent.press(screen.getByRole('button', { name: '사진 찍기' }));
   expect(await screen.findByRole('alert')).toHaveTextContent(/카메라 권한/);
   expect(launchCameraAsync).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByRole('button', { name: '사진 찍기' }));
   expect(await screen.findByLabelText('선택한 사진')).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: '보관 위치 바꾸기' }));
+  await fireEvent.press(await screen.findByRole('button', { name: '우리 집' }));
+  await fireEvent.press(await screen.findByRole('button', { name: '안방' }));
+  await fireEvent.press(screen.getByRole('button', { name: '이 위치 선택' }));
+  expect(screen.getByText('우리 집 › 안방')).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('button', { name: '물건 저장' }));
-  expect(createItem).toHaveBeenCalledWith('home', '시계', { photo: asset, note: '검은 파우치 안' });
+  expect(createItem).toHaveBeenCalledWith('bedroom', '시계', { photo: asset, note: '검은 파우치 안' });
+  expect(moveItem).not.toHaveBeenCalled();
+  expect(screen).toHavePathname('/storage');
 });
 
 let mockBedroomName = '안방';
@@ -79,6 +88,7 @@ jest.mock('../src/db/folders', () => ({
       { id: 'bedroom', name: mockBedroomName },
       { id: 'closet', name: '옷장' },
     ];
+    if (id === 'warehouse') return [{ id, name: '창고' }];
     return path.slice(0, path.findIndex((folder) => folder.id === id) + 1);
   },
 }));
@@ -103,7 +113,7 @@ test('보관함에서 우리 집을 거치지 않고 안방을 연다', async ()
   jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }]);
   await renderRouter({
     _layout: RootLayout, index: HomeScreen, storage: StorageScreen, ask: AskScreen,
-    'folder/[id]': FolderScreen, 'item/[id]': ItemScreen,
+    'folder/[id]': FolderScreen, 'item/[id]': ItemScreen, 'item/new': NewItemScreen,
   });
 
   expect(screen.getByText(/엄마가 찾아줄게/)).toBeOnTheScreen();
@@ -136,11 +146,16 @@ test('보관함에서 우리 집을 거치지 않고 안방을 연다', async ()
   expect(await screen.findByRole('button', { name: '옷장 이름 변경' })).toBeOnTheScreen();
   expect(screen.getByRole('link', { name: '우리 집' })).toBeOnTheScreen();
 
-  jest.mocked(createItem).mockResolvedValue({ id: 'passport', name: '여권', photoPath: null });
+  const passport = { id: 'passport', name: '여권', photoPath: null };
+  jest.mocked(createItem).mockResolvedValue(passport);
   await fireEvent.press(await screen.findByRole('button', { name: '물건 추가' }));
+  expect(screen).toHavePathname('/item/new');
+  expect(await screen.findByText('우리 집 › 침실 › 옷장')).toBeOnTheScreen();
   expect(screen.getByRole('button', { name: '물건 저장' })).toBeDisabled();
   await fireEvent.changeText(screen.getByLabelText('물건 이름'), ' 여권 ');
+  jest.mocked(listItems).mockResolvedValueOnce([passport]);
   await fireEvent.press(screen.getByRole('button', { name: '물건 저장' }));
+  expect(screen).toHavePathname('/folder/closet');
   expect(listItems).toHaveBeenCalledWith('closet');
   expect(createItem).toHaveBeenCalledWith('closet', '여권', { note: '' });
   expect(await screen.findByText('여권')).toBeOnTheScreen();
@@ -156,16 +171,18 @@ test('앨범 사진을 미리 보고 물건과 함께 저장한다', async () =>
   jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }]);
   const asset = { uri: 'file:///cache/photo.jpg', width: 100, height: 100, mimeType: 'image/jpeg' };
   jest.mocked(launchImageLibraryAsync).mockResolvedValue({ canceled: false, assets: [asset] });
-  jest.mocked(createItem).mockResolvedValue({ id: 'watch', name: '시계', photoPath: 'images/watch.jpg' });
-  await renderRouter({ storage: StorageScreen }, { initialUrl: '/storage' });
+  const watch = { id: 'watch', name: '시계', photoPath: 'images/watch.jpg' };
+  jest.mocked(createItem).mockResolvedValue(watch);
+  await renderRouter({ storage: StorageScreen, 'item/new': NewItemScreen }, { initialUrl: '/storage' });
 
   await fireEvent.press(await screen.findByRole('button', { name: '물건 추가' }));
-  await fireEvent.changeText(screen.getByLabelText('물건 이름'), '시계');
+  await fireEvent.changeText(await screen.findByLabelText('물건 이름'), '시계');
   await fireEvent.press(screen.getByRole('button', { name: /앨범에서 사진 추가/ }));
   expect(await screen.findByLabelText('선택한 사진')).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('button', { name: '사진 제거' }));
   expect(screen.queryByLabelText('선택한 사진')).toBeNull();
   await fireEvent.press(screen.getByRole('button', { name: /앨범에서 사진 추가/ }));
+  jest.mocked(listItems).mockResolvedValueOnce([watch]);
   await fireEvent.press(screen.getByRole('button', { name: '물건 저장' }));
 
   expect(createItem).toHaveBeenCalledWith('home', '시계', { photo: asset, note: '' });
@@ -337,7 +354,7 @@ test('홈에서 대화 화면을 열고 여러 질문을 보낸 뒤 물건 상�
   jest.mocked(getItemDetails).mockResolvedValueOnce({ ...item, note: null });
   await renderRouter({
     _layout: RootLayout, index: HomeScreen, ask: AskScreen, storage: StorageScreen,
-    'folder/[id]': FolderScreen, 'item/[id]': ItemScreen,
+    'folder/[id]': FolderScreen, 'item/[id]': ItemScreen, 'item/new': NewItemScreen,
   });
 
   expect(screen.queryByLabelText('질문 입력')).toBeNull();
@@ -491,7 +508,7 @@ test('내용이 남은 위치는 삭제할 수 없고 빈 위치를 삭제하면
   jest.mocked(deleteEmptyChildFolder).mockResolvedValueOnce('both').mockResolvedValueOnce('deleted');
   await renderRouter({
     _layout: RootLayout, index: HomeScreen, storage: StorageScreen, ask: AskScreen,
-    'folder/[id]': FolderScreen, 'item/[id]': ItemScreen,
+    'folder/[id]': FolderScreen, 'item/[id]': ItemScreen, 'item/new': NewItemScreen,
   }, { initialUrl: '/storage' });
 
   await fireEvent.press(await screen.findByRole('link', { name: '안방' }));
@@ -526,7 +543,7 @@ test('홈에서 최근 물건이 장소별로 보이고 상세에서 돌아오�
       pen,
     ]);
   jest.mocked(getItemDetails).mockResolvedValueOnce({ ...item, folderId: home.id, path: [home], note: null });
-  await renderRouter({ index: HomeScreen, storage: StorageScreen, 'item/[id]': ItemScreen });
+  await renderRouter({ index: HomeScreen, storage: StorageScreen, 'item/[id]': ItemScreen, 'item/new': NewItemScreen });
 
   const [homeRow, officeRow, emptyRow] = await screen.findAllByTestId('home-place-row');
   const watch = await within(homeRow).findByRole('link', { name: '시계' });
@@ -543,10 +560,11 @@ test('홈에서 최근 물건이 장소별로 보이고 상세에서 돌아오�
   expect(await screen.findByRole('link', { name: '여권' })).toBeOnTheScreen();
 
   await fireEvent.press(screen.getByRole('link', { name: '창고에 물건 추가' }));
-  expect(screen).toHavePathname('/storage');
-  expect(await screen.findByRole('header', { name: '창고' })).toBeOnTheScreen();
+  expect(screen).toHavePathname('/item/new');
+  expect(await screen.findByText('창고')).toBeOnTheScreen();
   expect(await screen.findByLabelText('물건 이름')).toBeOnTheScreen();
-  expect(listItems).toHaveBeenLastCalledWith('warehouse');
+  await act(() => router.back());
+  expect(screen).toHavePathname('/');
 });
 
 test('물건 상세에서 메모를 추가하고 편집하거나 비울 수 있다', async () => {

@@ -1,7 +1,11 @@
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type TextStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type TextInputProps, type TextStyle } from 'react-native';
 
 import { screenStyles } from './theme';
+
+export function NameInput({ style, ...props }: TextInputProps) {
+  return <TextInput {...props} style={[screenStyles.heading, styles.input, style]} />;
+}
 
 export default function EditableName({ id, name, inputLabel, inputStyle, persistName, onSaved, startEditing, onCancel }: {
   id: string;
@@ -54,7 +58,7 @@ export default function EditableName({ id, name, inputLabel, inputStyle, persist
   return (
     <View>
       <View style={styles.editRow}>
-        <TextInput
+        <NameInput
           accessibilityLabel={inputLabel}
           autoFocus
           editable={!saving}
@@ -62,7 +66,7 @@ export default function EditableName({ id, name, inputLabel, inputStyle, persist
           onChangeText={setDraft}
           onSubmitEditing={save}
           returnKeyType="done"
-          style={[screenStyles.heading, styles.input, inputStyle]}
+          style={[styles.rowInput, inputStyle]}
         />
         <Pressable
           accessibilityRole="button"
@@ -115,7 +119,8 @@ const styles = StyleSheet.create({
   editHint: { color: '#5B7567', fontSize: 17 },
   titlePressed: { opacity: 0.65 },
   editRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44 },
-  input: { flex: 1, minWidth: 0, minHeight: 44, borderBottomWidth: 1, borderBottomColor: '#2D6654', paddingVertical: 0 },
+  input: { minHeight: 44, borderBottomWidth: 1, borderBottomColor: '#2D6654', paddingVertical: 0 },
+  rowInput: { flex: 1, minWidth: 0 },
   iconButton: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   saveButton: { backgroundColor: '#2D6654' },
   cancelButton: { backgroundColor: '#EEEAE4' },
