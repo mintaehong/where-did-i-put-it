@@ -1,5 +1,5 @@
 import { useHeaderHeight } from 'expo-router/react-navigation';
-import { useRef, useState, type ComponentRef, type PropsWithChildren } from 'react';
+import { useCallback, useEffect, useRef, useState, type ComponentRef, type PropsWithChildren } from 'react';
 import { ActivityIndicator, Image, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { KeyboardProvider, KeyboardStickyView } from 'react-native-keyboard-controller';
 
@@ -32,10 +32,54 @@ function Conversation() {
   const [turns, setTurns] = useState<Turn[]>([]);
   const writing = useRef(false);
   const conversation = useRef<ComponentRef<typeof ScrollView>>(null);
+  const keyboardAnimatingOrOpen = useRef(false);
+  const scrollOnKeyboardOpen = useRef(false);
+  const replyReadyToScroll = useRef(false);
+  const lastQueuedReply = useRef(-1);
+  const scrollFrame = useRef<number | null>(null);
   const pending = turns.length > 0 && turns.at(-1)?.results === undefined;
   const canSend = !pending && Boolean(draft.trim());
   const isIOS = Platform.OS === 'ios';
   const Composer = isIOS ? KeyboardStickyView : View;
+
+  const scrollToReply = useCallback(() => {
+    if (!replyReadyToScroll.current || keyboardAnimatingOrOpen.current || scrollFrame.current !== null) return;
+    scrollFrame.current = requestAnimationFrame(() => {
+      scrollFrame.current = null;
+      if (!replyReadyToScroll.current || keyboardAnimatingOrOpen.current) return;
+      replyReadyToScroll.current = false;
+      conversation.current?.scrollToEnd({ animated: true });
+    });
+  }, []);
+
+  const keepLastMessageVisible = useCallback(() => {
+    if (!scrollOnKeyboardOpen.current) return;
+    scrollOnKeyboardOpen.current = false;
+    conversation.current?.scrollToEnd({ animated: true });
+  }, []);
+
+  useEffect(() => {
+    const subscriptions = isIOS ? [
+      Keyboard.addListener('keyboardWillShow', () => {
+        keyboardAnimatingOrOpen.current = true;
+        scrollOnKeyboardOpen.current = true;
+      }),
+      Keyboard.addListener('keyboardDidShow', keepLastMessageVisible),
+      Keyboard.addListener('keyboardWillHide', () => {
+        keyboardAnimatingOrOpen.current = true;
+        scrollOnKeyboardOpen.current = false;
+      }),
+      Keyboard.addListener('keyboardDidHide', () => {
+        keyboardAnimatingOrOpen.current = false;
+        scrollToReply();
+      }),
+    ] : [];
+    return () => {
+      subscriptions.forEach((subscription) => subscription.remove());
+      if (scrollFrame.current !== null) cancelAnimationFrame(scrollFrame.current);
+      scrollFrame.current = null;
+    };
+  }, [isIOS, keepLastMessageVisible, scrollToReply]);
 
   function measureBottomInset() {
     screen.current?.measureInWindow((_x, y, _width, height) => {
@@ -49,6 +93,8 @@ function Conversation() {
     if (!question || writing.current) return;
 
     writing.current = true;
+    replyReadyToScroll.current = false;
+    if (isIOS && Keyboard.isVisible()) keyboardAnimatingOrOpen.current = true;
     setTurns((previous) => [...previous, { question }]);
     setDraft('');
     Keyboard.dismiss();
@@ -80,9 +126,7 @@ function Conversation() {
             ref={conversation}
             contentContainerStyle={styles.history}
             keyboardShouldPersistTaps="handled"
-            onContentSizeChange={() => {
-              if (turns.length > 0) conversation.current?.scrollToEnd({ animated: true });
-            }}
+            onLayout={keepLastMessageVisible}
           >
             <MomReply>
               <Text style={styles.answerText}>뭐 찾고 있어?</Text>
@@ -92,7 +136,16 @@ function Conversation() {
                 <View style={styles.question}>
                   <Text style={styles.questionText}>{question}</Text>
                 </View>
-                <MomReply results={results}>
+                <MomReply
+                  key={results === undefined ? 'pending' : 'answered'}
+                  results={results}
+                  onLayout={index === turns.length - 1 && results !== undefined ? () => {
+                    if (index <= lastQueuedReply.current) return;
+                    lastQueuedReply.current = index;
+                    replyReadyToScroll.current = true;
+                    scrollToReply();
+                  } : undefined}
+                >
                   {results === undefined ? (
                     <ActivityIndicator accessibilityLabel="물건 찾는 중" style={styles.pending} />
                   ) : (
@@ -133,9 +186,12 @@ function Conversation() {
   );
 }
 
-function MomReply({ children, results }: PropsWithChildren<{ results?: Matches | null }>) {
+function MomReply({ children, results, onLayout }: PropsWithChildren<{
+  results?: Matches | null;
+  onLayout?: React.ComponentProps<typeof View>['onLayout'];
+}>) {
   return (
-    <View style={styles.replyRow}>
+    <View style={styles.replyRow} onLayout={onLayout}>
       <View style={styles.avatar}>
         <Image
           accessible
