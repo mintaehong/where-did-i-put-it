@@ -61,7 +61,7 @@ export default function BottomNavigation() {
   );
 }
 
-function TabIcon({ path, color }: { path: TabPath; color: string }) {
+export function TabIcon({ path, color }: { path: TabPath; color: string }) {
   const line = { borderColor: color };
   return (
     <View style={styles.icon} importantForAccessibility="no-hide-descendants">

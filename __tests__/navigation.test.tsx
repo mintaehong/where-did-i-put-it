@@ -386,6 +386,12 @@ test('홈에서 대화 화면을 열고 여러 질문을 보낸 뒤 물건 상�
   await fireEvent.press(screen.getByRole('tab', { name: '홈' }));
   expect(screen).toHavePathname('/');
   expect(screen).toHaveSearchParams({ tabSlide: 'left:3' });
+
+  await fireEvent.press(screen.getByRole('tab', { name: '보관함' }));
+  await fireEvent.press(screen.getByRole('tab', { name: '물어보기' }));
+  await fireEvent.press(screen.getByRole('button', { name: '홈으로 돌아가기' }));
+  expect(await screen.findByRole('tab', { name: '홈', selected: true })).toBeOnTheScreen();
+  expect(screen).toHavePathname('/');
 });
 
 test.each([
