@@ -24,14 +24,22 @@ export default function ItemLocation({ itemId, folderId, path, onMoved, disabled
   const locationHref = !itemId || path.length === 0 ? null : path.length === 1
     ? { pathname: '/storage' as const, params: { locationId: folderId } }
     : { pathname: '/folder/[id]' as const, params: { id: folderId } };
+  const locationLabel = pathLabel(path);
+  const locationContent = (
+    <View style={styles.pathRow}>
+      <View style={styles.folderBadge} importantForAccessibility="no-hide-descendants">
+        <View style={styles.folderTab} />
+        <View style={styles.folderOutline} />
+      </View>
+      <Text style={styles.pathText}>{locationLabel || '보관 위치를 찾을 수 없어요.'}</Text>
+      {locationHref && <Text style={styles.pathChevron}>›</Text>}
+    </View>
+  );
 
   return (
     <View style={styles.card}>
       <View style={styles.titleRow}>
-        <Text style={styles.label}>보관 위치</Text>
-        <Text style={screenStyles.body}>{pathLabel(path) || '보관 위치를 찾을 수 없어요.'}</Text>
-      </View>
-      <View style={styles.actions}>
+        <Text accessibilityRole="header" style={styles.label}>보관 위치</Text>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="보관 위치 바꾸기"
@@ -40,18 +48,21 @@ export default function ItemLocation({ itemId, folderId, path, onMoved, disabled
             Keyboard.dismiss();
             setPickerOpen(true);
           }}
-          style={styles.row}
+          style={({ pressed }) => [styles.changeLocation, (pressed || disabled) && styles.dimmed]}
         >
-          <Text style={styles.action}>바꾸기</Text>
+          <Text style={styles.changeLabel}>바꾸기</Text>
         </Pressable>
-        {locationHref && (
-          <Link href={locationHref} asChild>
-            <Pressable accessibilityRole="link" style={styles.openLocation}>
-              <Text style={styles.action}>위치 열기 ›</Text>
-            </Pressable>
-          </Link>
-        )}
       </View>
+      {locationHref ? (
+        <Link href={locationHref} asChild>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel={`위치 열기, ${locationLabel}`}
+          >
+            {locationContent}
+          </Pressable>
+        </Link>
+      ) : locationContent}
       {pickerOpen && (
         <LocationPicker
           itemId={itemId}
@@ -237,9 +248,23 @@ function LocationPicker({ itemId, folderId, path, onCancel, onSaved, disabled }:
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: '#DFEDE3', borderRadius: 16, padding: 16, gap: 12 },
-  titleRow: { gap: 6, minHeight: 44 },
+  card: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: '#E7E0D6', padding: 12 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   label: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  changeLocation: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
+  changeLabel: { color: '#69511B', fontSize: 14, fontWeight: '700' },
+  pathRow: {
+    minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 10, paddingVertical: 7, borderRadius: 12, backgroundColor: '#FFF8E9',
+  },
+  pathText: { flex: 1, color: colors.text, fontSize: 15, fontWeight: '600', lineHeight: 21 },
+  pathChevron: { color: colors.muted, fontSize: 22, lineHeight: 24 },
+  folderBadge: { width: 30, height: 30, borderRadius: 9, backgroundColor: '#FFEBAA' },
+  folderTab: { position: 'absolute', top: 8, left: 7, width: 8, height: 5, borderWidth: 1.5, borderColor: '#69511B', borderRadius: 2 },
+  folderOutline: {
+    position: 'absolute', top: 11, left: 7, width: 16, height: 11,
+    borderWidth: 1.5, borderColor: '#69511B', borderRadius: 2, backgroundColor: '#FFEBAA',
+  },
   action: { color: '#2D6654', fontSize: 14, fontWeight: '700' },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#241A165C' },
   sheet: {
@@ -265,7 +290,6 @@ const styles = StyleSheet.create({
   destinationLabel: { color: colors.muted, fontSize: 12, fontWeight: '600' },
   destinationPath: { color: colors.text, fontSize: 14, fontWeight: '600' },
   row: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 },
-  openLocation: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 10, backgroundColor: '#F2F7F2', borderRadius: 10 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8 },
   save: { backgroundColor: '#2D6654', borderRadius: 10 },
   saveText: { color: '#FFFFFF', fontWeight: '700' },
