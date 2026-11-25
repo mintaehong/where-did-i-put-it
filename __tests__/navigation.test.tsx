@@ -1,6 +1,7 @@
 import { launchCameraAsync, launchImageLibraryAsync, PermissionStatus, requestCameraPermissionsAsync } from 'expo-image-picker';
 import { router } from 'expo-router';
 import { act, fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
+import { Platform } from 'react-native';
 
 import RootLayout from '../app/_layout';
 import AskScreen from '../app/ask';
@@ -217,9 +218,12 @@ test('상세에서 사진 교체를 취소하거나 저장한다', async () => {
 
   const chooseReplacement = async () => {
     await fireEvent.press(await screen.findByRole('button', { name: '사진 바꾸기' }));
+    expect(screen.getByRole('header', { name: '사진 바꾸기' })).toBeOnTheScreen();
     expect(screen).toHavePathname('/item/watch');
     expect(screen.getByLabelText('시계 사진')).toHaveProp('source', { uri: 'file:///documents/images/old.jpg' });
+    const onDismiss = screen.getByTestId('photo-replacement-sheet').props.onDismiss;
     await fireEvent.press(screen.getByRole('button', { name: '앨범에서 사진 추가' }));
+    if (Platform.OS === 'ios') await act(onDismiss);
     expect(await screen.findByLabelText('선택한 사진')).toBeOnTheScreen();
   };
   await chooseReplacement();
@@ -242,6 +246,7 @@ test('상세에서 확인한 뒤 첨부 사진만 삭제한다', async () => {
   await renderRouter({ 'item/[id]': ItemScreen }, { initialUrl: '/item/watch' });
 
   await fireEvent.press(await screen.findByRole('button', { name: '사진 삭제' }));
+  expect(screen.getByRole('header', { name: '사진을 삭제할까요?' })).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('button', { name: '취소' }));
   expect(removeItemPhoto).not.toHaveBeenCalled();
   expect(screen.getByLabelText('시계 사진')).toBeOnTheScreen();

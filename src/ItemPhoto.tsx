@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Image, Modal, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { attachItemPhoto, removeItemPhoto, replaceItemPhoto } from './db/items';
 import { itemPhotoUri, type SelectedPhoto } from './itemPhotoFiles';
@@ -17,8 +18,12 @@ type PhotoProps = {
   onPickingChange: (picking: boolean) => void;
   disabled: boolean;
 };
+type PhotoSource = 'camera' | 'album';
 
 export default function ItemPhoto(props: PhotoProps) {
+  const { height: windowHeight } = useWindowDimensions();
+  const [sheetOffset] = useState(() => new Animated.Value(windowHeight));
+  const sheetHeight = useRef(0);
   const [preview, setPreview] = useState<SelectedPhoto>();
   const [showSources, setShowSources] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -26,6 +31,7 @@ export default function ItemPhoto(props: PhotoProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const pending = useRef(false);
+  const replacementSource = useRef<PhotoSource | undefined>(undefined);
   const detail = 'itemId' in props ? props : undefined;
   const draft = 'onChange' in props ? props : undefined;
   const photo = detail ? preview : draft?.photo;
@@ -52,8 +58,41 @@ export default function ItemPhoto(props: PhotoProps) {
     }
   }
 
-  function choose(source: 'camera' | 'album') {
+  function choose(source: PhotoSource) {
     return runPhotoAction(async () => setPhoto(await pickItemPhoto(source)));
+  }
+
+  function selectReplacement(source: PhotoSource) {
+    if (replacementSource.current || pending.current) return;
+    setShowSources(false);
+    if (Platform.OS === 'ios') {
+      // Present the picker once the sheet's native dismissal finishes.
+      replacementSource.current = source;
+    } else {
+      return choose(source);
+    }
+  }
+
+  function openSelectedSource() {
+    const source = replacementSource.current;
+    replacementSource.current = undefined;
+    if (source) return choose(source);
+  }
+
+  function animateSheetIn() {
+    sheetOffset.setValue(sheetHeight.current || windowHeight);
+    Animated.timing(sheetOffset, {
+      toValue: 0,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }
+
+  function cancelDelete() {
+    if (pending.current) return;
+    setConfirmDelete(false);
+    setError(undefined);
   }
 
   function deletePhoto() {
@@ -119,70 +158,120 @@ export default function ItemPhoto(props: PhotoProps) {
               <Text style={styles.cancelIcon}>×</Text>
             </Pressable>
           </View>
-      ) : !previousPath || showSources ? (
+      ) : !previousPath ? (
         <>
-          {!previousPath && <Text accessibilityRole="header" style={styles.label}>사진 추가</Text>}
-          <View style={styles.photoChoices}>
-            <Pressable
-              accessibilityRole="button"
-              disabled={disabled}
-              onPress={() => choose('camera')}
-              style={({ pressed }) => [styles.choice, (disabled || pressed) && styles.dimmed]}
-            >
-              <PhotoSourceIcon source="camera" />
-              <Text style={styles.sourceLabel}>사진 찍기</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="앨범에서 사진 추가"
-              disabled={disabled}
-              onPress={() => choose('album')}
-              style={({ pressed }) => [styles.choice, (disabled || pressed) && styles.dimmed]}
-            >
-              <PhotoSourceIcon source="album" />
-              <Text style={styles.sourceLabel}>앨범에서 선택</Text>
-            </Pressable>
-          </View>
-          {previousPath && (
-            <Pressable accessibilityRole="button" disabled={busy} onPress={() => {
-              setShowSources(false);
-              setError(undefined);
-            }} style={styles.changePhoto}>
-              <Text style={styles.choiceLabel}>교체 취소</Text>
-            </Pressable>
-          )}
+          <Text accessibilityRole="header" style={styles.label}>사진 추가</Text>
+          <PhotoChoices disabled={disabled} onChoose={choose} />
         </>
-      ) : confirmDelete ? (
-        <View style={styles.deletePanel}>
-          <Text style={screenStyles.body}>첨부 사진을 삭제할까요? 물건은 그대로 남아요.</Text>
-          <View style={styles.photoActions}>
-            <Pressable accessibilityRole="button" disabled={busy} onPress={() => {
-              setConfirmDelete(false);
-              setError(undefined);
-            }} style={styles.changePhoto}>
-              <Text style={styles.choiceLabel}>취소</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" disabled={busy} onPress={deletePhoto} style={styles.changePhoto}>
-              <Text style={styles.deleteLabel}>사진 삭제 확인</Text>
-            </Pressable>
-          </View>
-        </View>
       ) : (
         <View style={styles.photoActions}>
-          <Pressable accessibilityRole="button" onPress={() => setShowSources(true)} style={styles.changePhoto}>
+          <Pressable accessibilityRole="button" disabled={busy} onPress={() => {
+            if (replacementSource.current) return;
+            setError(undefined);
+            sheetOffset.setValue(windowHeight);
+            setShowSources(true);
+          }} style={styles.changePhoto}>
             <Text style={styles.choiceLabel}>사진 바꾸기</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" onPress={() => setConfirmDelete(true)} style={styles.changePhoto}>
+          <Pressable accessibilityRole="button" disabled={busy} onPress={() => {
+            if (replacementSource.current) return;
+            setError(undefined);
+            setConfirmDelete(true);
+          }} style={styles.changePhoto}>
             <Text style={styles.deleteLabel}>사진 삭제</Text>
           </Pressable>
         </View>
       )}
-      {error && <Text accessibilityRole="alert" style={screenStyles.body}>{error}</Text>}
+      {error && !confirmDelete && <Text accessibilityRole="alert" style={screenStyles.body}>{error}</Text>}
+      {previousPath && (
+        <>
+          <Modal
+            testID="photo-replacement-sheet"
+            visible={showSources}
+            transparent
+            animationType="none"
+            onShow={animateSheetIn}
+            onRequestClose={() => setShowSources(false)}
+            onDismiss={openSelectedSource}
+          >
+            <View style={styles.sheetOverlay}>
+              <Pressable accessible={false} style={StyleSheet.absoluteFill} onPress={() => setShowSources(false)} />
+              <Animated.View
+                onLayout={(event) => { sheetHeight.current = event.nativeEvent.layout.height; }}
+                style={{ transform: [{ translateY: sheetOffset }] }}
+              >
+                <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.sheet} accessibilityViewIsModal>
+                  <View style={styles.sheetContent}>
+                    <Text accessibilityRole="header" style={styles.dialogTitle}>사진 바꾸기</Text>
+                    <PhotoChoices disabled={!showSources || busy} onChoose={selectReplacement} />
+                    <Pressable accessibilityRole="button" onPress={() => setShowSources(false)} style={styles.dialogButton}>
+                      <Text style={styles.sourceLabel}>취소</Text>
+                    </Pressable>
+                  </View>
+                </SafeAreaView>
+              </Animated.View>
+            </View>
+          </Modal>
+          <Modal visible={confirmDelete} transparent animationType="fade" onRequestClose={cancelDelete}>
+            <View style={styles.dialogOverlay}>
+              <Pressable accessible={false} style={StyleSheet.absoluteFill} onPress={cancelDelete} />
+              <View style={styles.dialog} accessibilityViewIsModal>
+                <Text accessibilityRole="header" style={styles.dialogTitle}>사진을 삭제할까요?</Text>
+                <Text style={screenStyles.body}>첨부 사진만 삭제돼요.</Text>
+                {error && <Text accessibilityRole="alert" style={screenStyles.body}>{error}</Text>}
+                <View style={styles.photoActions}>
+                  <Pressable accessibilityRole="button" disabled={busy} onPress={cancelDelete} style={styles.dialogButton}>
+                    <Text style={styles.sourceLabel}>취소</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="사진 삭제 확인"
+                    disabled={busy}
+                    onPress={deletePhoto}
+                    style={[styles.dialogButton, styles.deleteButton, busy && styles.dimmed]}
+                  >
+                    <Text style={styles.deleteButtonLabel}>{busy ? '삭제 중' : '삭제'}</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          </Modal>
+        </>
+      )}
     </View>
   );
 }
 
-function PhotoSourceIcon({ source }: { source: 'camera' | 'album' }) {
+function PhotoChoices({ disabled, onChoose }: {
+  disabled?: boolean;
+  onChoose: (source: PhotoSource) => void;
+}) {
+  return (
+    <View style={styles.photoChoices}>
+      <Pressable
+        accessibilityRole="button"
+        disabled={disabled}
+        onPress={() => onChoose('camera')}
+        style={({ pressed }) => [styles.choice, (disabled || pressed) && styles.dimmed]}
+      >
+        <PhotoSourceIcon source="camera" />
+        <Text style={styles.sourceLabel}>사진 찍기</Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="앨범에서 사진 추가"
+        disabled={disabled}
+        onPress={() => onChoose('album')}
+        style={({ pressed }) => [styles.choice, (disabled || pressed) && styles.dimmed]}
+      >
+        <PhotoSourceIcon source="album" />
+        <Text style={styles.sourceLabel}>앨범에서 선택</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function PhotoSourceIcon({ source }: { source: PhotoSource }) {
   return (
     <View style={styles.iconBadge} importantForAccessibility="no-hide-descendants">
       <View style={styles.sourceIcon}>
@@ -244,7 +333,15 @@ const styles = StyleSheet.create({
   choiceLabel: { color: '#2D6654', fontSize: 14, fontWeight: '700', textAlign: 'center' },
   changePhoto: { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 },
   photoActions: { flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 4 },
-  deletePanel: { gap: 4 },
+  sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#241A165C' },
+  sheet: { backgroundColor: '#FFF8E9', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+  sheetContent: { width: '100%', maxWidth: 480, alignSelf: 'center', padding: 20, gap: 12 },
+  dialogOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#241A165C', padding: 24 },
+  dialog: { backgroundColor: colors.surface, width: '100%', maxWidth: 380, borderRadius: 20, padding: 20, gap: 8 },
+  dialogTitle: { color: colors.text, fontSize: 19, fontWeight: '700' },
+  dialogButton: { minHeight: 44, justifyContent: 'center', alignItems: 'center', borderRadius: 12, paddingHorizontal: 16 },
+  deleteButton: { backgroundColor: colors.accent },
+  deleteButtonLabel: { color: colors.surface, fontSize: 14, fontWeight: '700' },
   deleteLabel: { color: colors.accent, fontSize: 14, fontWeight: '700' },
   previewBar: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   previewLabel: { flex: 1 },
