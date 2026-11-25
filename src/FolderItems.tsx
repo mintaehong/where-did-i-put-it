@@ -1,5 +1,5 @@
 import { Link, useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Button, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
 import { createItem, listItems } from './db/items';
@@ -10,7 +10,11 @@ import { colors, screenStyles } from './theme';
 const viewOptions = [{ value: 'grid', label: '카드' }, { value: 'list', label: '목록' }] as const;
 const cardsPerPage = 4;
 
-export default function FolderItems({ folderId }: { folderId: string }) {
+export default function FolderItems({ folderId, startAdding, onAddOpened }: {
+  folderId: string;
+  startAdding?: boolean;
+  onAddOpened?: () => void;
+}) {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [items, setItems] = useState<Awaited<ReturnType<typeof listItems>>>();
   const [loadError, setLoadError] = useState(false);
@@ -23,6 +27,12 @@ export default function FolderItems({ folderId }: { folderId: string }) {
   const [picking, setPicking] = useState(false);
   const [photoError, setPhotoError] = useState<string>();
   const pending = useRef(false);
+
+  useEffect(() => {
+    if (!startAdding) return;
+    setDraft((previous) => previous ?? '');
+    onAddOpened?.();
+  }, [startAdding, onAddOpened]);
 
   useFocusEffect(useCallback(() => {
     let active = true;

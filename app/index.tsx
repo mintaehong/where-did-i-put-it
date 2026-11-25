@@ -11,9 +11,6 @@ import { pickItemPhoto } from '../src/pickItemPhoto';
 import { placeCoverImage, placeCovers, type PlaceCover } from '../src/placeCovers';
 import { colors, screenStyles } from '../src/theme';
 
-const placeCoverSize = 68;
-const placeMainGap = 9;
-
 export default function HomeScreen() {
   const { width, fontScale } = useWindowDimensions();
   const showButtonLabel = width >= 370 && fontScale <= 1.2;
@@ -47,7 +44,7 @@ export default function HomeScreen() {
 
 function HomePlaces() {
   const [places, setPlaces] = useState<Awaited<ReturnType<typeof listRootFolders>> | null>();
-  const [recentItems, setRecentItems] = useState<Awaited<ReturnType<typeof listRecentItemsByLocation>>>([]);
+  const [recentItems, setRecentItems] = useState<Awaited<ReturnType<typeof listRecentItemsByLocation>>>();
   const [childFolders, setChildFolders] = useState<Awaited<ReturnType<typeof listRootChildFolders>>>([]);
   const [attempt, setAttempt] = useState(0);
   const [newLocation, setNewLocation] = useState<string>();
@@ -68,7 +65,7 @@ function HomePlaces() {
     );
     listRecentItemsByLocation().then(
       (rows) => { if (active) setRecentItems(rows); },
-      () => { if (active) setRecentItems([]); },
+      () => { if (active) setRecentItems(undefined); },
     );
     listRootChildFolders().then(
       (rows) => { if (active) setChildFolders(rows); },
@@ -216,7 +213,7 @@ function HomePlaces() {
         <View style={styles.placeList}>
           {places.map((place) => {
             const folders = childFolders.filter((folder) => folder.locationId === place.id);
-            const previews = recentItems.filter((item) => item.locationId === place.id);
+            const previews = recentItems?.filter((item) => item.locationId === place.id) ?? [];
             const itemCount = previews[0]?.itemCount ?? 0;
             const coverImage = placeCoverImage(place.coverPath);
             return (
@@ -244,12 +241,11 @@ function HomePlaces() {
                       <View style={styles.placeCover} importantForAccessibility="no-hide-descendants">
                         <Image source={coverImage} resizeMode="cover" style={styles.coverImage} />
                       </View>
-                      <View style={styles.placeContent}>
-                      <View style={previews.length ? styles.placeDetailsWithPreviews : styles.placeDetails}>
+                      <View style={styles.placeDetails}>
+                        <View style={styles.placeNameRow}>
                           <Link href={{ pathname: '/storage', params: { locationId: place.id } }} style={styles.placeName} numberOfLines={2}>
                             {place.name}
                           </Link>
-                          {itemCount > 0 && <Text style={styles.placeCount}>물건 {itemCount}개</Text>}
                           <Pressable
                             accessibilityRole="button"
                             accessibilityLabel={place.name + ' 이름 변경'}
@@ -260,20 +256,34 @@ function HomePlaces() {
                             <Text style={styles.editIcon}>✎</Text>
                           </Pressable>
                         </View>
-                        <RecentPreviews items={previews} />
-                        <Link href={{ pathname: '/storage', params: { locationId: place.id } }} asChild>
-                          <Pressable accessibilityRole="link" accessibilityLabel={place.name + ' 열기'} style={styles.arrowButton}>
-                            <Text style={styles.placeArrow}>›</Text>
+                        {recentItems !== undefined && <Text style={styles.placeCount}>물건 {itemCount}개</Text>}
+                        {folders.length > 0 && (
+                          <View style={styles.folderSummary}>
+                            <View style={styles.folderMark} importantForAccessibility="no" />
+                            <Text numberOfLines={1} style={styles.folderNames}>
+                              {folders.slice(0, 3).map((folder) => folder.name).join('  ·  ')}
+                              {folders.length > 3 ? `  +${folders.length - 3}` : ''}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <Link href={{ pathname: '/storage', params: { locationId: place.id } }} asChild>
+                        <Pressable accessibilityRole="link" accessibilityLabel={place.name + ' 열기'} style={styles.arrowButton}>
+                          <Text style={styles.placeArrow}>›</Text>
+                        </Pressable>
+                      </Link>
+                    </View>
+                    {previews.length > 0 ? (
+                      <RecentPreviews items={previews} />
+                    ) : recentItems !== undefined && (
+                      <View style={styles.emptyPlace}>
+                        <ParcelMark />
+                        <Text style={styles.emptyText}>아직 보관한 물건이 없어요.</Text>
+                        <Link href={{ pathname: '/storage', params: { locationId: place.id, addItem: '1' } }} asChild>
+                          <Pressable accessibilityRole="link" accessibilityLabel={place.name + '에 물건 추가'} style={styles.addItem}>
+                            <Text style={styles.addItemLabel}>+ 물건 추가</Text>
                           </Pressable>
                         </Link>
-                      </View>
-                    </View>
-                    {folders.length > 0 && (
-                      <View style={styles.folderSummary}>
-                        <Text numberOfLines={1} style={styles.folderNames}>
-                          {folders.slice(0, 3).map((folder) => folder.name).join('  ·  ')}
-                          {folders.length > 3 ? `  +${folders.length - 3}` : ''}
-                        </Text>
                       </View>
                     )}
                   </>
@@ -291,28 +301,40 @@ function RecentPreviews({ items }: { items: Awaited<ReturnType<typeof listRecent
   if (items.length === 0) return null;
   const extra = items[0].itemCount - items.length;
   return (
-    <View style={styles.previews}>
-      {items.map((item, index) => (
-        <View key={item.id} style={styles.previewSlot}>
-          <Link href={{ pathname: '/item/[id]', params: { id: item.id } }} asChild>
-            <Pressable accessibilityRole="link" accessibilityLabel={item.name} style={styles.previewItem}>
-              <View style={styles.previewMedia}>
-                {item.photoPath ? (
-                  <Image source={{ uri: itemPhotoUri(item.photoPath) }} resizeMode="cover" style={styles.previewPhoto} />
-                ) : (
-                  <Text importantForAccessibility="no">📦</Text>
-                )}
-                {extra > 0 && index === items.length - 1 && (
-                  <View style={styles.extraPreview}>
-                    <Text numberOfLines={1} style={styles.extraLabel}>+{extra}</Text>
-                  </View>
-                )}
-              </View>
-              <Text numberOfLines={1} style={styles.previewName}>{item.name}</Text>
-            </Pressable>
-          </Link>
-        </View>
-      ))}
+    <View style={styles.recent}>
+      <Text accessibilityRole="header" style={styles.recentHeading}>최근 추가한 물건</Text>
+      <View style={styles.previews}>
+        {items.map((item, index) => (
+          <View key={item.id} style={styles.previewSlot}>
+            <Link href={{ pathname: '/item/[id]', params: { id: item.id } }} asChild>
+              <Pressable accessibilityRole="link" accessibilityLabel={item.name} style={styles.previewItem}>
+                <View style={styles.previewMedia}>
+                  {item.photoPath ? (
+                    <Image source={{ uri: itemPhotoUri(item.photoPath) }} resizeMode="cover" style={styles.previewPhoto} />
+                  ) : (
+                    <ParcelMark />
+                  )}
+                  {extra > 0 && index === items.length - 1 && (
+                    <View style={styles.extraPreview}>
+                      <Text numberOfLines={1} style={styles.extraLabel}>+{extra}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text numberOfLines={1} style={styles.previewName}>{item.name}</Text>
+              </Pressable>
+            </Link>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function ParcelMark() {
+  return (
+    <View importantForAccessibility="no-hide-descendants" style={styles.parcel}>
+      <View style={styles.parcelLid} />
+      <View style={styles.parcelSeam} />
     </View>
   );
 }
@@ -342,50 +364,53 @@ const styles = StyleSheet.create({
     marginTop: 24,
     gap: 12,
   },
-  placeList: { gap: 10 },
+  placeList: { borderTopWidth: StyleSheet.hairlineWidth, borderColor: '#E0DFDB' },
   placeRow: {
-    minHeight: 74,
-    gap: 7,
-    padding: 10,
-    borderRadius: 16,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: '#DEE7DE',
+    gap: 16,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: '#E0DFDB',
   },
   placeHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  placeMain: { flexDirection: 'row', alignItems: 'center', gap: placeMainGap },
+  placeMain: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   placeCover: {
-    width: placeCoverSize, height: placeCoverSize, flexShrink: 0, borderRadius: 12,
-    backgroundColor: '#E4EDE2', overflow: 'hidden',
+    width: 62, height: 62, flexShrink: 0, borderRadius: 13, backgroundColor: '#F3F0EB', overflow: 'hidden',
   },
   coverImage: { width: '100%', height: '100%' },
-  placeContent: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  placeDetails: { flex: 1, minWidth: 0 },
-  placeDetailsWithPreviews: { width: 60, flexShrink: 1, minWidth: 40 },
-  placeCount: { color: colors.muted, fontSize: 10, marginTop: 2 },
-  editPlace: { alignSelf: 'flex-start', minWidth: 36, minHeight: 28, justifyContent: 'center' },
-  editIcon: { color: '#698276', fontSize: 15 },
+  placeDetails: { flex: 1, minWidth: 0, gap: 3 },
+  placeNameRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  placeCount: { color: '#62605C', fontSize: 13 },
+  editPlace: { minWidth: 44, minHeight: 44, marginVertical: -7, justifyContent: 'center', alignItems: 'center' },
+  editIcon: { color: '#474541', fontSize: 17 },
   placeEditor: { minWidth: 0, paddingHorizontal: 3 },
   placeName: {
-    color: '#263B36',
-    fontSize: 15,
-    fontWeight: '700',
+    flexShrink: 1, color: '#242422', fontSize: 19, fontWeight: '800',
   },
-  placeArrow: { color: '#2D6654', fontSize: 20 },
-  arrowButton: { width: 24, flexShrink: 0, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  previews: { flex: 1, minWidth: 0, flexDirection: 'row', justifyContent: 'flex-end', gap: 4 },
-  previewSlot: { flex: 1, minWidth: 0, maxWidth: 44, overflow: 'hidden' },
-  previewItem: { gap: 4 },
-  previewMedia: { height: 38, borderRadius: 7, backgroundColor: '#EAF2EA', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  placeArrow: { color: '#242422', fontSize: 25 },
+  arrowButton: { width: 44, flexShrink: 0, minHeight: 44, alignItems: 'flex-end', justifyContent: 'center' },
+  recent: { gap: 10 },
+  recentHeading: { color: '#242422', fontSize: 15, fontWeight: '800' },
+  previews: { flexDirection: 'row', gap: 10 },
+  previewSlot: { flex: 1, minWidth: 0, maxWidth: '32%' },
+  previewItem: { gap: 6 },
+  previewMedia: { aspectRatio: 1, borderRadius: 12, backgroundColor: '#F2F0ED', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   previewPhoto: { width: '100%', height: '100%' },
-  previewName: { width: '100%', textAlign: 'center', color: colors.muted, fontSize: 11 },
+  previewName: { width: '100%', textAlign: 'center', color: '#464541', fontSize: 13 },
   extraPreview: { position: 'absolute', right: 2, bottom: 2, maxWidth: '95%', paddingHorizontal: 3, borderRadius: 5, backgroundColor: '#35483E' },
   extraLabel: { color: colors.surface, fontSize: 10, fontWeight: '700' },
-  folderSummary: { marginLeft: placeCoverSize + placeMainGap, borderRadius: 7, backgroundColor: '#EEF3EB', paddingHorizontal: 8, paddingVertical: 5 },
-  folderNames: { color: '#486454', fontSize: 11 },
+  folderSummary: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  folderMark: { width: 14, height: 11, borderWidth: 1.3, borderColor: '#77746F', borderRadius: 2 },
+  folderNames: { flexShrink: 1, color: '#62605C', fontSize: 13 },
+  parcel: { width: 30, height: 25, borderWidth: 1.5, borderColor: '#817E77', borderRadius: 3 },
+  parcelLid: { position: 'absolute', top: 6, left: 0, right: 0, borderTopWidth: 1.5, borderColor: '#817E77' },
+  parcelSeam: { position: 'absolute', top: 0, left: 12, height: 11, borderLeftWidth: 1.5, borderColor: '#817E77' },
+  emptyPlace: { alignItems: 'center', gap: 8, paddingVertical: 5 },
+  emptyText: { color: '#62605C', textAlign: 'center', fontSize: 14 },
+  addItem: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 18, borderRadius: 24, borderWidth: 1, borderColor: '#F1D684', backgroundColor: '#FFF9E6' },
+  addItemLabel: { color: '#242422', fontSize: 14, fontWeight: '700' },
   sectionTitle: {
-    color: '#263B36',
-    fontSize: 16,
+    color: '#242422',
+    fontSize: 20,
     fontWeight: '800',
   },
   link: {

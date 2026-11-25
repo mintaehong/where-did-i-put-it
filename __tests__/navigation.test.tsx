@@ -522,12 +522,19 @@ test('홈에서 최근 물건이 장소별로 보이고 상세에서 돌아오�
   expect(within(homeRow).getByText('+1')).toBeOnTheScreen();
   expect(within(officeRow).getByRole('link', { name: '볼펜' })).toBeOnTheScreen();
   expect(within(officeRow).queryByRole('link', { name: '시계' })).toBeNull();
-  expect(within(emptyRow).getAllByRole('link')).toHaveLength(2);
+  expect(within(emptyRow).getByText('아직 보관한 물건이 없어요.')).toBeOnTheScreen();
+  expect(within(emptyRow).getByRole('link', { name: '창고에 물건 추가' })).toBeOnTheScreen();
   await fireEvent.press(watch);
   expect(screen).toHavePathname('/item/watch');
   expect(await screen.findByLabelText('시계 사진')).toBeOnTheScreen();
   await act(() => router.back());
   expect(await screen.findByRole('link', { name: '여권' })).toBeOnTheScreen();
+
+  await fireEvent.press(screen.getByRole('link', { name: '창고에 물건 추가' }));
+  expect(screen).toHavePathname('/storage');
+  expect(await screen.findByRole('header', { name: '창고' })).toBeOnTheScreen();
+  expect(await screen.findByLabelText('물건 이름')).toBeOnTheScreen();
+  expect(listItems).toHaveBeenLastCalledWith('warehouse');
 });
 
 test('물건 상세에서 메모를 추가하고 편집하거나 비울 수 있다', async () => {

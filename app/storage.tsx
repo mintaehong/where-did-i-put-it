@@ -16,9 +16,10 @@ export default function StorageScreen() {
   const [result, setResult] = useState<FolderList>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const router = useRouter();
-  const { locationId: selectedId } = useLocalSearchParams<{ locationId?: string }>();
+  const { locationId: selectedId, addItem } = useLocalSearchParams<{ locationId?: string; addItem?: string }>();
   const roots = result.status === 'ready' ? result.folders : [];
   const selected = roots.find((folder) => folder.id === selectedId) ?? roots[0];
+  const clearAddRequest = useCallback(() => router.setParams({ addItem: '' }), [router]);
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -46,7 +47,7 @@ export default function StorageScreen() {
                 key={folder.id}
                 accessibilityRole="button"
                 accessibilityState={{ selected: active }}
-                onPress={() => router.setParams({ locationId: folder.id })}
+                onPress={() => router.setParams({ locationId: folder.id, addItem: '' })}
                 style={[styles.location, active && styles.selectedLocation]}
               >
                 <Text style={[styles.locationName, active && styles.selectedName]}>{folder.name}</Text>
@@ -72,7 +73,12 @@ export default function StorageScreen() {
       )}
       {selected && (
         <>
-          <FolderItems key={`items-${selected.id}`} folderId={selected.id} />
+          <FolderItems
+            key={`items-${selected.id}`}
+            folderId={selected.id}
+            startAdding={addItem === '1' && selected.id === selectedId}
+            onAddOpened={clearAddRequest}
+          />
           <ChildFolders key={selected.id} parentId={selected.id} />
         </>
       )}
