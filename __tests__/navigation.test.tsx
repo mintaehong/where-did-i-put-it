@@ -105,7 +105,7 @@ test('보관함에서 우리 집을 거치지 않고 안방을 연다', async ()
     'folder/[id]': FolderScreen, 'item/[id]': ItemScreen,
   });
 
-  expect(screen.getByText(/엄마가 기억해 줄게/)).toBeOnTheScreen();
+  expect(screen.getByText(/엄마가 찾아줄게/)).toBeOnTheScreen();
   await fireEvent.press(await screen.findByRole('link', { name: '우리 집' }));
 
   expect(screen).toHavePathname('/storage');

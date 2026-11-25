@@ -4,6 +4,7 @@
     "slug": "where-did-i-put-it",
     "version": "0.1.0",
     "scheme": "where-did-i-put-it",
+    "icon": "./assets/app-icon-launcher.png",
     "platforms": ["android", "ios"],
     "plugins": ["expo-router"]
   }

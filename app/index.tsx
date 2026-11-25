@@ -1,6 +1,7 @@
 import { Link, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import EditableName from '../src/EditableName';
 import { createRootFolder, listRootChildFolders, listRootFolders, renameFolder } from '../src/db/folders';
@@ -10,21 +11,37 @@ import { pickItemPhoto } from '../src/pickItemPhoto';
 import { placeCoverImage, placeCovers, type PlaceCover } from '../src/placeCovers';
 import { colors, screenStyles } from '../src/theme';
 
+const placeCoverSize = 68;
+const placeMainGap = 9;
+
 export default function HomeScreen() {
+  const { width, fontScale } = useWindowDimensions();
+  const showButtonLabel = width >= 370 && fontScale <= 1.2;
+
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text accessibilityRole="header" style={styles.heading}>
-        {'어디에 뒀더라? 👋\n엄마가 기억해 줄게.'}
-      </Text>
-      <Text style={styles.description}>소중한 물건들, 여기 차곡차곡 모아두자.</Text>
-      <Link href="/ask" asChild>
-        <Pressable accessibilityRole="link" style={styles.askEntry}>
-          <Text style={styles.askLabel}>엄마에게 물어보기</Text>
-          <Text importantForAccessibility="no" style={styles.askLabel}>›</Text>
-        </Pressable>
-      </Link>
-      <HomePlaces />
-    </ScrollView>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View style={styles.wordmark}>
+          <Image source={require('../assets/app-logo-header.png')} resizeMode="contain" style={styles.logo} />
+          <Text accessibilityRole="header" style={styles.heading}>어디 뒀지?</Text>
+        </View>
+        <Link href="/ask" asChild>
+          <Pressable accessibilityRole="link" accessibilityLabel="엄마에게 물어보기" style={styles.askEntry}>
+            <View style={styles.askLayout}>
+              <Image source={require('../assets/mom-banner.png')} resizeMode="contain" style={styles.momImage} />
+              <View style={styles.askCopy}>
+                <Text style={styles.askMessage}>{'뭐 찾니?\n엄마가 찾아줄게.'}</Text>
+              </View>
+              <View style={styles.askButton}>
+                {showButtonLabel && <Text style={styles.askLabel}>엄마에게 물어보기</Text>}
+                <Text importantForAccessibility="no" style={styles.askArrow}>→</Text>
+              </View>
+            </View>
+          </Pressable>
+        </Link>
+        <HomePlaces />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -302,29 +319,25 @@ function RecentPreviews({ items }: { items: Awaited<ReturnType<typeof listRecent
 
 const styles = StyleSheet.create({
   screen: {
-    backgroundColor: '#FAF8F3',
+    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   content: {
     paddingHorizontal: 23,
-    paddingTop: 20,
+    paddingTop: 14,
     paddingBottom: 32,
   },
-  heading: {
-    color: '#263B36',
-    fontSize: 28,
-    lineHeight: 38,
-    fontWeight: '900',
-    letterSpacing: -1,
-  },
-  description: {
-    color: '#556C62',
-    fontSize: 14,
-    lineHeight: 21,
-    marginTop: 9,
-    marginBottom: 24,
-  },
-  askEntry: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, minHeight: 52, padding: 14, borderRadius: 14, backgroundColor: '#2D6654' },
-  askLabel: { color: colors.surface, fontSize: 16, fontWeight: '700' },
+  wordmark: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44, marginBottom: 16 },
+  heading: { color: '#242422', fontSize: 24, fontWeight: '800', letterSpacing: -0.6 },
+  logo: { width: 34, height: 36 },
+  askEntry: { backgroundColor: '#FFEBAA', borderRadius: 22, overflow: 'hidden' },
+  askLayout: { minHeight: 104, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10 },
+  momImage: { width: 72, height: 94, alignSelf: 'flex-end' },
+  askCopy: { flex: 1, minWidth: 0, paddingVertical: 12 },
+  askMessage: { color: '#242422', fontSize: 15, lineHeight: 21, fontWeight: '800', letterSpacing: -0.4 },
+  askButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, minHeight: 36, minWidth: 36, paddingHorizontal: 8, borderRadius: 20, backgroundColor: '#262522' },
+  askLabel: { color: '#FFFFFF', fontSize: 11, fontWeight: '700', letterSpacing: -0.2 },
+  askArrow: { color: '#FFFFFF', fontSize: 16, lineHeight: 20 },
   places: {
     marginTop: 24,
     gap: 12,
@@ -340,8 +353,11 @@ const styles = StyleSheet.create({
     borderColor: '#DEE7DE',
   },
   placeHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  placeMain: { flexDirection: 'row', alignItems: 'center', gap: 9 },
-  placeCover: { width: 55, height: 55, borderRadius: 12, backgroundColor: '#E4EDE2', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  placeMain: { flexDirection: 'row', alignItems: 'center', gap: placeMainGap },
+  placeCover: {
+    width: placeCoverSize, height: placeCoverSize, flexShrink: 0, borderRadius: 12,
+    backgroundColor: '#E4EDE2', overflow: 'hidden',
+  },
   coverImage: { width: '100%', height: '100%' },
   placeContent: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 6 },
   placeDetails: { flex: 1, minWidth: 0 },
@@ -365,7 +381,7 @@ const styles = StyleSheet.create({
   previewName: { width: '100%', textAlign: 'center', color: colors.muted, fontSize: 11 },
   extraPreview: { position: 'absolute', right: 2, bottom: 2, maxWidth: '95%', paddingHorizontal: 3, borderRadius: 5, backgroundColor: '#35483E' },
   extraLabel: { color: colors.surface, fontSize: 10, fontWeight: '700' },
-  folderSummary: { marginLeft: 64, borderRadius: 7, backgroundColor: '#EEF3EB', paddingHorizontal: 8, paddingVertical: 5 },
+  folderSummary: { marginLeft: placeCoverSize + placeMainGap, borderRadius: 7, backgroundColor: '#EEF3EB', paddingHorizontal: 8, paddingVertical: 5 },
   folderNames: { color: '#486454', fontSize: 11 },
   sectionTitle: {
     color: '#263B36',
