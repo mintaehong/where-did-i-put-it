@@ -1,21 +1,15 @@
 import { Link, useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useCallback, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import ChildFolders from '../../src/ChildFolders';
+import DeleteConfirmation from '../../src/DeleteConfirmation';
 import FolderItems from '../../src/FolderItems';
 import FolderCoverSheet from '../../src/FolderCoverSheet';
 import FolderThumbnail from '../../src/FolderThumbnail';
 import EditableName from '../../src/EditableName';
-import { deleteEmptyChildFolder, getFolderPath, renameFolder } from '../../src/db/folders';
+import { deleteChildFolder, getFolderPath, renameFolder, type FolderContents } from '../../src/db/folders';
 import { colors, screenStyles } from '../../src/theme';
-
-const deleteMessages = {
-  both: '물건과 하위 위치가 남아 있어요. 모두 비운 뒤 삭제할 수 있어요.',
-  items: '물건이 남아 있어요. 물건을 옮기거나 삭제한 뒤 다시 시도해 주세요.',
-  children: '하위 위치가 남아 있어요. 하위 위치를 비운 뒤 삭제해 주세요.',
-  unavailable: '위치를 삭제하지 못했어요. 다시 시도해 주세요.',
-};
 
 export default function FolderScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -106,28 +100,41 @@ function LocationTitle({ id, name, coverPath, children, onCoverSaved, onDeleted 
   const [confirming, setConfirming] = useState(false);
   const [editingCover, setEditingCover] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<keyof typeof deleteMessages>();
+  const [error, setError] = useState(false);
+  const [contents, setContents] = useState<FolderContents>();
   const pending = useRef(false);
-  const blocked = error !== undefined && error !== 'unavailable';
+  const included = contents && [
+    contents.folderCount > 0 && `하위 위치 ${contents.folderCount}곳`,
+    contents.itemCount > 0 && `물건 ${contents.itemCount}개`,
+  ].filter(Boolean).join(', ');
 
   async function confirm() {
     if (!onDeleted || pending.current) return;
     pending.current = true;
     setBusy(true);
-    setError(undefined);
+    setError(false);
     try {
-      const outcome = await deleteEmptyChildFolder(id);
-      if (outcome === 'deleted') {
+      const outcome = contents ? await deleteChildFolder(id, contents) : await deleteChildFolder(id);
+      if (outcome.status === 'deleted') {
+        setConfirming(false);
         onDeleted();
         return;
       }
-      setError(outcome);
+      if (outcome.status === 'confirm') setContents(outcome.contents);
+      else setError(true);
     } catch {
-      setError('unavailable');
+      setError(true);
     } finally {
       pending.current = false;
       setBusy(false);
     }
+  }
+
+  function closeConfirmation() {
+    if (pending.current) return;
+    setConfirming(false);
+    setError(false);
+    setContents(undefined);
   }
 
   return (
@@ -147,8 +154,11 @@ function LocationTitle({ id, name, coverPath, children, onCoverSaved, onDeleted 
           </Pressable>
         ) : <FolderThumbnail name={name} coverPath={coverPath} />}
         <View style={styles.title}>{children}</View>
-        {onDeleted && !confirming && (
-          <Pressable accessibilityRole="button" onPress={() => setConfirming(true)} style={styles.action}>
+        {onDeleted && (
+          <Pressable accessibilityRole="button" onPress={() => {
+            Keyboard.dismiss();
+            setConfirming(true);
+          }} style={styles.action}>
             <Text style={styles.deleteLabel}>위치 삭제</Text>
           </Pressable>
         )}
@@ -164,27 +174,20 @@ function LocationTitle({ id, name, coverPath, children, onCoverSaved, onDeleted 
           }}
         />
       )}
-      {confirming && (
-        <View style={styles.confirmation}>
-          {error ? (
-            <Text accessibilityRole="alert" style={screenStyles.body}>{deleteMessages[error]}</Text>
-          ) : (
-            <Text style={screenStyles.body}>‘{name}’ 위치를 삭제할까요?</Text>
-          )}
-          <View style={styles.actions}>
-            <Pressable accessibilityRole="button" disabled={busy} onPress={() => {
-              setConfirming(false);
-              setError(undefined);
-            }} style={styles.action}>
-              <Text style={styles.cancelLabel}>{blocked ? '닫기' : '취소'}</Text>
-            </Pressable>
-            {!blocked && (
-              <Pressable accessibilityRole="button" disabled={busy} onPress={confirm} style={styles.action}>
-                <Text style={styles.deleteLabel}>{busy ? '삭제 중' : error ? '다시 시도' : '위치 삭제 확인'}</Text>
-              </Pressable>
-            )}
-          </View>
-        </View>
+      {onDeleted && (
+        <DeleteConfirmation
+          visible={confirming}
+          title={contents ? `${name} 안의 내용까지 삭제할까요?` : `${name} 위치를 삭제할까요?`}
+          message={included
+            ? `${included} 및 관련 사진이 함께 삭제돼요. 되돌릴 수 없어요.`
+            : coverPath?.startsWith('place-covers/') ? '이 위치의 대표 사진도 함께 삭제돼요.' : undefined}
+          confirmLabel={contents ? '모두 삭제' : error ? '다시 시도' : '위치 삭제 확인'}
+          confirmText={contents ? '모두 삭제' : error ? '다시 시도' : undefined}
+          busy={busy}
+          error={error ? '위치를 삭제하지 못했어요. 다시 시도해 주세요.' : undefined}
+          onCancel={closeConfirmation}
+          onConfirm={confirm}
+        />
       )}
     </View>
   );
@@ -204,9 +207,6 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth, borderColor: '#E7E0D6',
   },
   editSymbol: { color: '#69511B', fontSize: 14, fontWeight: '700' },
-  confirmation: { gap: 8, padding: 12, backgroundColor: colors.surface, borderRadius: 12 },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8 },
   action: { justifyContent: 'center', minHeight: 44, paddingHorizontal: 10 },
-  cancelLabel: { color: '#2D6654', fontSize: 14, fontWeight: '700' },
   deleteLabel: { color: colors.accent, fontSize: 14, fontWeight: '700' },
 });

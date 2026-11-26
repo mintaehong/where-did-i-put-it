@@ -2,11 +2,12 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, screenStyles } from './theme';
 
-export default function DeleteConfirmation({ visible, title, message, confirmLabel, busy, error, onCancel, onConfirm }: {
+export default function DeleteConfirmation({ visible, title, message, confirmLabel, confirmText = '삭제', busy, error, onCancel, onConfirm }: {
   visible: boolean;
   title: string;
-  message: string;
+  message?: string;
   confirmLabel: string;
+  confirmText?: string;
   busy: boolean;
   error?: string;
   onCancel: () => void;
@@ -18,7 +19,7 @@ export default function DeleteConfirmation({ visible, title, message, confirmLab
         <Pressable accessible={false} disabled={busy} style={StyleSheet.absoluteFill} onPress={onCancel} />
         <View style={styles.dialog} accessibilityViewIsModal>
           <Text accessibilityRole="header" style={styles.title}>{title}</Text>
-          <Text style={screenStyles.body}>{message}</Text>
+          {message && <Text style={screenStyles.body}>{message}</Text>}
           {error && <Text accessibilityRole="alert" style={screenStyles.body}>{error}</Text>}
           <View style={styles.actions}>
             <Pressable accessibilityRole="button" disabled={busy} onPress={onCancel} style={styles.button}>
@@ -32,7 +33,7 @@ export default function DeleteConfirmation({ visible, title, message, confirmLab
               onPress={onConfirm}
               style={[styles.button, styles.deleteButton, busy && styles.dimmed]}
             >
-              <Text style={styles.deleteLabel}>{busy ? '삭제 중' : '삭제'}</Text>
+              <Text style={styles.deleteLabel}>{busy ? '삭제 중' : confirmText}</Text>
             </Pressable>
           </View>
         </View>

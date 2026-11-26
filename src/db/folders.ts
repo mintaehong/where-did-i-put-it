@@ -1,7 +1,7 @@
 import { randomUUID } from 'expo-crypto';
 import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 
-import { copyItemPhoto, discardItemPhoto } from '../itemPhotoFiles';
+import { copyItemPhoto, discardItemPhoto, discardStoredItemPhoto } from '../itemPhotoFiles';
 import type { FolderCover, PlaceCover } from '../placeCovers';
 import { migrateDatabase } from './migrate';
 
@@ -191,29 +191,71 @@ function discardFolderCover(path: string | null) {
   if (path && /^place-covers\/[a-f0-9-]+(?:\.[a-z0-9]{1,8})?$/i.test(path)) discardItemPhoto(path);
 }
 
-export async function deleteEmptyChildFolder(id: string) {
-  const db = await getStorage();
-  const deleted = await db.getFirstAsync<{ coverPath: string | null }>(
-    `DELETE FROM folders
-     WHERE id = ? AND parent_id IS NOT NULL
-       AND NOT EXISTS (SELECT 1 FROM folders AS child WHERE child.parent_id = folders.id)
-       AND NOT EXISTS (SELECT 1 FROM items WHERE items.folder_id = folders.id)
-     RETURNING cover_path AS coverPath`,
-    id,
-  );
-  if (deleted) {
-    discardFolderCover(deleted.coverPath);
-    return 'deleted';
-  }
+export type FolderContents = { folderCount: number; itemCount: number };
 
-  const contents = await db.getFirstAsync<{ hasChildren: number; hasItems: number }>(
-    `SELECT EXISTS (SELECT 1 FROM folders AS child WHERE child.parent_id = folders.id) AS hasChildren,
-            EXISTS (SELECT 1 FROM items WHERE items.folder_id = folders.id) AS hasItems
-     FROM folders WHERE id = ? AND parent_id IS NOT NULL`,
-    id,
-  );
-  if (contents?.hasItems && contents.hasChildren) return 'both';
-  if (contents?.hasItems) return 'items';
-  if (contents?.hasChildren) return 'children';
-  return 'unavailable';
+const folderSubtree = `WITH RECURSIVE subtree(id, depth) AS (
+  SELECT id, 0 FROM folders WHERE id = ? AND parent_id IS NOT NULL
+  UNION ALL
+  SELECT child.id, subtree.depth + 1 FROM folders AS child JOIN subtree ON child.parent_id = subtree.id
+)`;
+
+type FolderDeletion =
+  | { status: 'unavailable' }
+  | { status: 'confirm'; contents: FolderContents }
+  | { status: 'deleted'; covers: (string | null)[]; photos: (string | null)[] };
+
+export async function deleteChildFolder(id: string, confirmed?: FolderContents) {
+  const db = await getStorage();
+  const deletion: { outcome: FolderDeletion } = { outcome: { status: 'unavailable' } };
+  await db.withExclusiveTransactionAsync(async (transaction) => {
+    const folders = await transaction.getAllAsync<{ id: string; coverPath: string | null }>(
+      `${folderSubtree}
+       SELECT folders.id, folders.cover_path AS coverPath
+       FROM folders JOIN subtree ON folders.id = subtree.id ORDER BY subtree.depth DESC`,
+      id,
+    );
+    if (folders.length === 0) return;
+
+    const items = await transaction.getAllAsync<{ photoPath: string | null }>(
+      `${folderSubtree}
+       SELECT item_images.relative_path AS photoPath
+       FROM items JOIN subtree ON items.folder_id = subtree.id
+       LEFT JOIN item_images ON item_images.item_id = items.id`,
+      id,
+    );
+    const contents = { folderCount: folders.length - 1, itemCount: items.length };
+    if ((contents.folderCount || contents.itemCount)
+      && (confirmed?.folderCount !== contents.folderCount || confirmed?.itemCount !== contents.itemCount)) {
+      deletion.outcome = { status: 'confirm', contents };
+      return;
+    }
+
+    if (items.length > 0) {
+      await transaction.runAsync(
+        `${folderSubtree}
+         DELETE FROM item_images WHERE item_id IN (SELECT id FROM items WHERE folder_id IN (SELECT id FROM subtree))`,
+        id,
+      );
+      await transaction.runAsync(
+        `${folderSubtree} DELETE FROM items WHERE folder_id IN (SELECT id FROM subtree)`, id,
+      );
+    }
+    // Child rows must go first because the parent foreign key uses RESTRICT.
+    for (const folder of folders) {
+      await transaction.runAsync('DELETE FROM folders WHERE id = ?', folder.id);
+    }
+    deletion.outcome = {
+      status: 'deleted',
+      covers: folders.map((folder) => folder.coverPath),
+      photos: items.map((item) => item.photoPath),
+    };
+  });
+
+  const { outcome } = deletion;
+  if (outcome.status === 'deleted') {
+    outcome.covers.forEach(discardFolderCover);
+    outcome.photos.forEach((path) => { if (path) discardStoredItemPhoto(path); });
+    return { status: 'deleted' } as const;
+  }
+  return outcome;
 }

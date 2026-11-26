@@ -10,7 +10,7 @@ import HomeScreen from '../app/index';
 import ItemScreen from '../app/item/[id]';
 import NewItemScreen from '../app/item/new';
 import StorageScreen from '../app/storage';
-import { createChildFolder, createRootFolder, deleteEmptyChildFolder, listChildFolders, listRootChildFolders, listRootFolders, renameFolder, updateChildFolderCover } from '../src/db/folders';
+import { createChildFolder, createRootFolder, deleteChildFolder, listChildFolders, listRootChildFolders, listRootFolders, renameFolder, updateChildFolderCover } from '../src/db/folders';
 import { askForItems, attachItemPhoto, createItem, deleteItem, getItemDetails, listItems, listRecentItemsByLocation, moveItem, removeItemPhoto, renameItem, replaceItemPhoto, saveItemNote, searchItems } from '../src/db/items';
 
 jest.mock('react-native-keyboard-controller', () => jest.requireActual('react-native-keyboard-controller/jest'));
@@ -92,7 +92,7 @@ jest.mock('../src/db/folders', () => ({
   createChildFolder: jest.fn(),
   updateChildFolderCover: jest.fn(),
   createRootFolder: jest.fn(),
-  deleteEmptyChildFolder: jest.fn(),
+  deleteChildFolder: jest.fn(),
   renameFolder: jest.fn(async (_id: string, name: string) => { mockBedroomName = name; }),
   listChildFolders: jest.fn(async (id: string) => id === 'home' ? [{ id: 'bedroom', name: mockBedroomName }] : []),
   getFolderPath: async (id: string) => {
@@ -581,9 +581,13 @@ test('물건이 네 개를 넘으면 카드 보기에서 옆으로 넘길 수 �
   expect(screen.getAllByRole('link', { name: /^물건 \d/ })).toHaveLength(5);
 });
 
-test('내용이 남은 위치는 삭제할 수 없고 빈 위치를 삭제하면 상위 목록으로 돌아온다', async () => {
+test('내용이 남은 위치는 취소할 수 있고 두 번째 확인 뒤 함께 삭제된다', async () => {
   jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }]);
-  jest.mocked(deleteEmptyChildFolder).mockResolvedValueOnce('both').mockResolvedValueOnce('deleted');
+  const contents = { folderCount: 2, itemCount: 5 };
+  jest.mocked(deleteChildFolder)
+    .mockResolvedValueOnce({ status: 'confirm', contents })
+    .mockResolvedValueOnce({ status: 'confirm', contents })
+    .mockResolvedValueOnce({ status: 'deleted' });
   await renderRouter({
     _layout: RootLayout, index: HomeScreen, storage: StorageScreen, ask: AskScreen,
     'folder/[id]': FolderScreen, 'item/[id]': ItemScreen, 'item/new': NewItemScreen,
@@ -591,17 +595,22 @@ test('내용이 남은 위치는 삭제할 수 없고 빈 위치를 삭제하면
 
   await fireEvent.press(await screen.findByRole('link', { name: '안방' }));
   await fireEvent.press(await screen.findByRole('button', { name: '위치 삭제' }));
+  expect(screen.getByRole('header', { name: '안방 위치를 삭제할까요?' })).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('button', { name: '위치 삭제 확인' }));
-  expect(await screen.findByRole('alert')).toHaveTextContent(/물건과 하위 위치가 남아 있어요/);
+  expect(await screen.findByText(/하위 위치 2곳, 물건 5개 및 관련 사진이 함께 삭제돼요/)).toBeOnTheScreen();
+  expect(screen.getByRole('header', { name: '안방 안의 내용까지 삭제할까요?' })).toBeOnTheScreen();
   expect(screen).toHavePathname('/folder/bedroom');
   expect(screen.queryByRole('button', { name: '위치 삭제 확인' })).toBeNull();
-  await fireEvent.press(screen.getByRole('button', { name: '닫기' }));
-  expect(screen.queryByRole('alert')).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: '취소' }));
+  expect(screen.queryByRole('button', { name: '모두 삭제' })).toBeNull();
+  expect(deleteChildFolder).toHaveBeenCalledTimes(1);
 
   jest.mocked(listChildFolders).mockResolvedValueOnce([]);
   await fireEvent.press(screen.getByRole('button', { name: '위치 삭제' }));
   await fireEvent.press(screen.getByRole('button', { name: '위치 삭제 확인' }));
-  expect(deleteEmptyChildFolder).toHaveBeenLastCalledWith('bedroom');
+  expect(deleteChildFolder).toHaveBeenLastCalledWith('bedroom');
+  await fireEvent.press(await screen.findByRole('button', { name: '모두 삭제' }));
+  expect(deleteChildFolder).toHaveBeenLastCalledWith('bedroom', contents);
   expect(screen).toHavePathname('/storage');
   expect(await screen.findByText('아직 이곳에 등록된 보관 장소가 없어요.')).toBeOnTheScreen();
   expect(screen.queryByRole('link', { name: '안방' })).toBeNull();
