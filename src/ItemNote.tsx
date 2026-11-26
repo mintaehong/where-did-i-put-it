@@ -90,7 +90,7 @@ export default function ItemNote(props: NoteProps) {
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: '#E7E0D6', padding: 12 },
+  card: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, padding: 12 },
   heading: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   label: { color: colors.text, fontSize: 16, fontWeight: '700' },
   action: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },

@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   locationTrigger: { alignSelf: 'flex-start', maxWidth: '100%', minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 },
   triggerName: { flexShrink: 1 },
-  triggerIcon: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#FFEBAA', alignItems: 'center', justifyContent: 'center' },
+  triggerIcon: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   chevron: {
     width: 8, height: 8, marginTop: -3, borderRightWidth: 2, borderBottomWidth: 2,
     borderColor: colors.text, transform: [{ rotate: '45deg' }],
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
   menuPosition: { position: 'absolute', left: screenStyles.content.padding, right: screenStyles.content.padding, bottom: 12 },
   menu: {
     flexShrink: 1, maxHeight: 320, backgroundColor: colors.surface, borderRadius: 14, padding: 4,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: '#E7E0D6', elevation: 5,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, elevation: 5,
     shadowColor: '#2E211C', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 5 },
   },
   locationList: { flexGrow: 0, flexShrink: 1 },
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10,
   },
-  selectedLocation: { backgroundColor: '#FFF5D7' },
+  selectedLocation: { backgroundColor: colors.primarySoft },
   locationName: { flex: 1, color: colors.text, fontSize: 16 },
   selectedName: { fontWeight: '700' },
   check: { color: '#69511B', fontSize: 17, fontWeight: '700' },

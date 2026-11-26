@@ -248,7 +248,7 @@ function LocationPicker({ itemId, folderId, path, onCancel, onSaved, disabled }:
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: '#E7E0D6', padding: 12 },
+  card: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, padding: 12 },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   label: { color: colors.text, fontSize: 16, fontWeight: '700' },
   changeLocation: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
@@ -259,11 +259,11 @@ const styles = StyleSheet.create({
   },
   pathText: { flex: 1, color: colors.text, fontSize: 15, fontWeight: '600', lineHeight: 21 },
   pathChevron: { color: colors.muted, fontSize: 22, lineHeight: 24 },
-  folderBadge: { width: 30, height: 30, borderRadius: 9, backgroundColor: '#FFEBAA' },
+  folderBadge: { width: 30, height: 30, borderRadius: 9, backgroundColor: colors.primary },
   folderTab: { position: 'absolute', top: 8, left: 7, width: 8, height: 5, borderWidth: 1.5, borderColor: '#69511B', borderRadius: 2 },
   folderOutline: {
     position: 'absolute', top: 11, left: 7, width: 16, height: 11,
-    borderWidth: 1.5, borderColor: '#69511B', borderRadius: 2, backgroundColor: '#FFEBAA',
+    borderWidth: 1.5, borderColor: '#69511B', borderRadius: 2, backgroundColor: colors.primary,
   },
   action: { color: '#2D6654', fontSize: 14, fontWeight: '700' },
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#241A165C' },
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   locationList: { flexGrow: 0, flexShrink: 1 },
   listStatus: { paddingVertical: 12 },
   treeRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderColor: '#EAE5DD' },
-  selectedRow: { backgroundColor: '#FFF5D7' },
+  selectedRow: { backgroundColor: colors.primarySoft },
   selectLocation: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 48, paddingVertical: 8, paddingLeft: 8 },
   folderName: { color: colors.text, fontSize: 16, flexShrink: 1 },
   rootName: { fontWeight: '700' },

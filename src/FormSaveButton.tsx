@@ -22,7 +22,7 @@ export default function FormSaveButton({ label, saving, disabled, onPress }: {
 
 const styles = StyleSheet.create({
   save: {
-    minHeight: 50, borderRadius: 16, backgroundColor: '#FFEBAA',
+    minHeight: 50, borderRadius: 16, backgroundColor: colors.primary,
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 10,
   },
   savePressed: { backgroundColor: '#F6DB86' },

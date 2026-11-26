@@ -300,12 +300,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   sourceLabel: { color: colors.text, fontSize: 14, fontWeight: '600', textAlign: 'center' },
-  iconBadge: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#FFEBAA', alignItems: 'center', justifyContent: 'center' },
+  iconBadge: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   sourceIcon: { width: 22, height: 22 },
   cameraTop: { position: 'absolute', top: 2, left: 7, width: 8, height: 5, borderWidth: 1.5, borderColor: colors.text, borderRadius: 2 },
   cameraBody: {
     position: 'absolute', top: 5, left: 1, width: 20, height: 15, borderWidth: 1.5,
-    borderColor: colors.text, borderRadius: 4, backgroundColor: '#FFEBAA', alignItems: 'center', justifyContent: 'center',
+    borderColor: colors.text, borderRadius: 4, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
   },
   cameraLens: { width: 7, height: 7, borderRadius: 4, borderWidth: 1.5, borderColor: colors.text },
   albumFrame: {

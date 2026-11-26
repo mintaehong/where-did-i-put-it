@@ -3,6 +3,8 @@ import { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { colors } from './theme';
+
 const tabs = [
   { path: '/', label: '홈' },
   { path: '/ask', label: '물어보기' },
@@ -94,7 +96,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', gap: 4, minWidth: 62, minHeight: 48,
     paddingHorizontal: 9, paddingVertical: 3, borderRadius: 24,
   },
-  selected: { backgroundColor: '#FFEBAA' },
+  selected: { backgroundColor: colors.primary },
   label: { fontSize: 11, fontWeight: '600', textAlign: 'center' },
   selectedLabel: { fontWeight: '800' },
   pressed: { opacity: 0.65 },

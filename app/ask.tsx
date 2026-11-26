@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
   avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#FFF6E1', borderWidth: 1, borderColor: '#EADFC5', overflow: 'hidden' },
   avatarImage: { width: 40, height: 53, marginTop: 1 },
   replyContent: { flex: 1, minWidth: 0, gap: 7 },
-  answer: { alignSelf: 'flex-start', maxWidth: '100%', paddingVertical: 11, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#FFEBAA' },
+  answer: { alignSelf: 'flex-start', maxWidth: '100%', paddingVertical: 11, paddingHorizontal: 14, borderRadius: 18, backgroundColor: colors.primary },
   answerText: { color: '#242422', fontSize: 16, lineHeight: 22 },
   pending: { alignSelf: 'flex-start' },
   composer: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E5E3DE', backgroundColor: colors.surface },

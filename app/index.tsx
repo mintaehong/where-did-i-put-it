@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
   wordmark: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44, marginBottom: 16 },
   heading: { color: '#242422', fontSize: 24, fontWeight: '800', letterSpacing: -0.6 },
   logo: { width: 34, height: 36 },
-  askEntry: { backgroundColor: '#FFEBAA', borderRadius: 22, overflow: 'hidden' },
+  askEntry: { backgroundColor: colors.primary, borderRadius: 22, overflow: 'hidden' },
   askLayout: { minHeight: 104, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10 },
   momImage: { width: 72, height: 94, alignSelf: 'flex-end' },
   askCopy: { flex: 1, minWidth: 0, paddingVertical: 12 },

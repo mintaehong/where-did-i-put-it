@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   editBadge: {
     position: 'absolute', right: -3, bottom: -3, width: 20, height: 20, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: '#E7E0D6',
+    borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
   },
   editSymbol: { color: '#69511B', fontSize: 14, fontWeight: '700' },
   action: { justifyContent: 'center', minHeight: 44, paddingHorizontal: 10 },

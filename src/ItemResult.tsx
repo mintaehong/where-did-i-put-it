@@ -44,12 +44,12 @@ export default function ItemResult({ item, variant, highlight }: {
 const styles = StyleSheet.create({
   result: {
     flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: '#E7E0D6',
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
   conversation: { gap: 9, padding: 9, borderRadius: 12, borderWidth: 1, borderColor: '#E4E0DA', backgroundColor: colors.surface },
   resultText: { flex: 1, gap: 4 },
   name: { color: colors.text, fontSize: 16, fontWeight: '700' },
-  highlight: { backgroundColor: '#FFEBAA' },
+  highlight: { backgroundColor: colors.primary },
   path: { color: colors.muted, fontSize: 14, lineHeight: 20 },
   chevron: { color: colors.muted, fontSize: 22 },
   conversationArrow: { color: '#242422' },

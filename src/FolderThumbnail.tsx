@@ -1,5 +1,7 @@
 import { Image, StyleSheet, View } from 'react-native';
 
+import { colors } from './theme';
+
 import { itemPhotoUri } from './itemPhotoFiles';
 import { storageIconForCover } from './placeCovers';
 import StorageIconView from './StorageIconView';
@@ -25,7 +27,7 @@ export default function FolderThumbnail({ name, coverPath }: { name: string; cov
 
 const styles = StyleSheet.create({
   thumbnail: {
-    width: 48, height: 48, borderRadius: 12, backgroundColor: '#FFF5D7',
+    width: 48, height: 48, borderRadius: 12, backgroundColor: colors.primarySoft,
     alignItems: 'center', justifyContent: 'center',
   },
 });

@@ -125,7 +125,7 @@ export default function ChildFolders({ parentId }: { parentId: string }) {
 const styles = StyleSheet.create({
   section: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E7E0D6',
+    borderTopColor: colors.border,
     paddingTop: 12,
     gap: 8,
   },
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   addButtonPressed: {
-    backgroundColor: '#FFF5D7',
+    backgroundColor: colors.primarySoft,
   },
   addLabel: {
     color: '#69511B',
@@ -156,10 +156,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   folderList: {
-    borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: '#E7E0D6',
+    borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
     backgroundColor: colors.surface, overflow: 'hidden',
   },
-  rowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E7E0D6' },
+  rowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
   folder: {
     flexDirection: 'row',
     alignItems: 'center',
