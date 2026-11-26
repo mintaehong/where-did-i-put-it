@@ -46,8 +46,13 @@ export default function ItemNote(props: NoteProps) {
       <View style={styles.heading}>
         <Text accessibilityRole="header" style={styles.label}>메모</Text>
         {creation ? null : draft === undefined ? (
-          <Pressable accessibilityRole="button" onPress={() => setDraft(note ?? '')} style={styles.action}>
-            <Text style={styles.actionText}>{note ? '메모 수정' : '+ 메모 추가'}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={note ? '메모 수정' : '메모 추가'}
+            onPress={() => setDraft(note ?? '')}
+            style={({ pressed }) => [styles.action, pressed && styles.disabled]}
+          >
+            <Text style={styles.actionText}>{note ? '수정' : '추가'}</Text>
           </Pressable>
         ) : (
           <View style={styles.actions}>
@@ -65,7 +70,7 @@ export default function ItemNote(props: NoteProps) {
         )}
       </View>
       {draft === undefined ? (
-        note && <Text style={screenStyles.body}>{note}</Text>
+        note && <Text style={[styles.noteArea, styles.noteText]}>{note}</Text>
       ) : (
         <TextInput
           accessibilityLabel={creation ? '물건 메모' : '메모 내용'}
@@ -76,7 +81,7 @@ export default function ItemNote(props: NoteProps) {
           editable={!saving && !creation?.disabled}
           value={draft}
           onChangeText={creation?.onChange ?? setDraft}
-          style={styles.input}
+          style={[styles.noteArea, styles.noteText, styles.input]}
         />
       )}
       {failed && <Text accessibilityRole="alert" style={screenStyles.body}>메모를 저장하지 못했어요. 다시 시도해 주세요.</Text>}
@@ -85,17 +90,19 @@ export default function ItemNote(props: NoteProps) {
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.surface, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 8, gap: 6 },
-  heading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  card: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: '#E7E0D6', padding: 12 },
+  heading: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   label: { color: colors.text, fontSize: 16, fontWeight: '700' },
-  action: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 6 },
-  actionText: { color: '#2D6654', fontSize: 14, fontWeight: '700' },
+  action: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
+  actionText: { color: '#69511B', fontSize: 14, fontWeight: '700' },
   actions: { flexDirection: 'row', gap: 6 },
   icon: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  save: { backgroundColor: '#2D6654' },
+  save: { backgroundColor: '#69511B' },
   saveIcon: { color: colors.surface, fontSize: 22, fontWeight: '700' },
-  cancel: { backgroundColor: '#EEEAE4' },
+  cancel: { backgroundColor: '#F8F5EF' },
   cancelIcon: { color: colors.text, fontSize: 24 },
   disabled: { opacity: 0.5 },
-  input: { minHeight: 86, backgroundColor: '#F7F9F5', borderRadius: 10, padding: 10, textAlignVertical: 'top', color: colors.text, fontSize: 16 },
+  noteArea: { backgroundColor: '#FFF8E9', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
+  noteText: { color: colors.text, fontSize: 15, lineHeight: 22 },
+  input: { minHeight: 76, textAlignVertical: 'top' },
 });

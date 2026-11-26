@@ -1,11 +1,12 @@
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 
 import { NameInput } from '../../src/EditableName';
 import ItemLocation from '../../src/ItemLocation';
 import ItemNote from '../../src/ItemNote';
 import ItemPhoto from '../../src/ItemPhoto';
+import ItemScreenScroll from '../../src/ItemScreenScroll';
 import { getFolderPath } from '../../src/db/folders';
 import { createItem } from '../../src/db/items';
 import type { SelectedPhoto } from '../../src/itemPhotoFiles';
@@ -82,7 +83,7 @@ function NewItem({ folderId }: { folderId?: string }) {
   }
 
   return (
-    <ScrollView contentContainerStyle={screenStyles.content} keyboardShouldPersistTaps="handled">
+    <ItemScreenScroll>
       {origin === undefined ? (
         <ActivityIndicator accessibilityLabel="보관 위치 불러오는 중" />
       ) : !destination ? (
@@ -122,7 +123,7 @@ function NewItem({ folderId }: { folderId?: string }) {
           </Pressable>
         </>
       )}
-    </ScrollView>
+    </ItemScreenScroll>
   );
 }
 

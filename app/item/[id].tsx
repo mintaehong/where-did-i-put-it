@@ -1,12 +1,13 @@
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { deleteItem, getItemDetails, renameItem } from '../../src/db/items';
 import EditableName from '../../src/EditableName';
 import ItemLocation from '../../src/ItemLocation';
 import ItemNote from '../../src/ItemNote';
 import ItemPhoto from '../../src/ItemPhoto';
+import ItemScreenScroll from '../../src/ItemScreenScroll';
 import { colors, screenStyles } from '../../src/theme';
 
 export default function ItemScreen() {
@@ -30,7 +31,7 @@ function ItemDetails({ id }: { id: string }) {
   }, [id]);
 
   return (
-    <ScrollView contentContainerStyle={screenStyles.content} keyboardShouldPersistTaps="handled">
+    <ItemScreenScroll>
       {loadError ? (
         <Text accessibilityRole="alert" style={screenStyles.body}>물건을 불러오지 못했어요.</Text>
       ) : item === undefined ? (
@@ -69,7 +70,7 @@ function ItemDetails({ id }: { id: string }) {
           }} />
         </>
       )}
-    </ScrollView>
+    </ItemScreenScroll>
   );
 }
 
