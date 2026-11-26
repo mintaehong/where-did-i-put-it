@@ -1,6 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { ActivityIndicator, Button, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, BackHandler, Button, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import ChildFolders from '../src/ChildFolders';
 import FolderItems from '../src/FolderItems';
@@ -16,10 +16,25 @@ type FolderList =
 export default function StorageScreen() {
   const [result, setResult] = useState<FolderList>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [menuTop, setMenuTop] = useState<number | null>(null);
+  const triggerBottom = useRef(screenStyles.content.padding + 44);
+  const scrollTop = useRef(0);
   const router = useRouter();
   const { locationId: selectedId } = useLocalSearchParams<{ locationId?: string }>();
   const roots = result.status === 'ready' ? result.folders : [];
   const selected = roots.find((folder) => folder.id === selectedId) ?? roots[0];
+  const showLocations = menuTop !== null && roots.length > 1;
+
+  const closeLocations = useCallback(() => setMenuTop(null), []);
+
+  useEffect(() => {
+    if (!showLocations) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      closeLocations();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [closeLocations, showLocations]);
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -33,63 +48,120 @@ export default function StorageScreen() {
     );
     return () => {
       active = false;
+      closeLocations();
     };
-  }, [attempt]));
+  }, [attempt, closeLocations]));
 
   return (
     <TabSlide>
-      <ScrollView contentContainerStyle={screenStyles.content} keyboardShouldPersistTaps="handled">
-        {roots.length > 1 && (
-          <View style={styles.locations}>
-            {roots.map((folder) => {
-              const active = folder.id === selected?.id;
-              return (
-                <Pressable
-                  key={folder.id}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  onPress={() => router.setParams({ locationId: folder.id })}
-                  style={[styles.location, active && styles.selectedLocation]}
-                >
-                  <Text style={[styles.locationName, active && styles.selectedName]}>{folder.name}</Text>
-                </Pressable>
-              );
-            })}
+      <View style={styles.screen}>
+        <ScrollView
+          contentContainerStyle={screenStyles.content}
+          keyboardShouldPersistTaps="handled"
+          accessibilityElementsHidden={showLocations}
+          importantForAccessibility={showLocations ? 'no-hide-descendants' : 'auto'}
+          onScroll={(event) => { scrollTop.current = event.nativeEvent.contentOffset.y; }}
+          scrollEventThrottle={16}
+        >
+          {selected && roots.length > 1 ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${selected.name} 장소 바꾸기`}
+              accessibilityState={{ expanded: showLocations }}
+              onPress={() => {
+                Keyboard.dismiss();
+                setMenuTop(Math.max(4, triggerBottom.current - scrollTop.current + 6));
+              }}
+              onLayout={({ nativeEvent: { layout } }) => { triggerBottom.current = layout.y + layout.height; }}
+              style={({ pressed }) => [styles.locationTrigger, pressed && styles.pressed]}
+            >
+              <Text style={[screenStyles.heading, styles.triggerName]}>{selected.name}</Text>
+              <View style={styles.triggerIcon} importantForAccessibility="no-hide-descendants">
+                <View style={styles.chevron} />
+              </View>
+            </Pressable>
+          ) : (
+            <Text accessibilityRole="header" style={screenStyles.heading}>{selected?.name ?? '보관 장소'}</Text>
+          )}
+          {selected && <ItemSearch locationId={selected.id} />}
+          {result.status === 'loading' && <ActivityIndicator accessibilityLabel="보관함 불러오는 중" />}
+          {result.status === 'error' && (
+            <>
+              <Text style={screenStyles.body}>보관함을 불러오지 못했어요.</Text>
+              <Button title="다시 시도" onPress={() => {
+                setResult({ status: 'loading' });
+                setAttempt((previous) => previous + 1);
+              }} />
+            </>
+          )}
+          {result.status === 'ready' && !selected && (
+            <Text style={screenStyles.body}>아직 등록된 보관 장소가 없어요.</Text>
+          )}
+          {selected && (
+            <>
+              <FolderItems key={`items-${selected.id}`} folderId={selected.id} />
+              <ChildFolders key={selected.id} parentId={selected.id} />
+            </>
+          )}
+        </ScrollView>
+        {showLocations && (
+          <View style={StyleSheet.absoluteFill} accessibilityViewIsModal onAccessibilityEscape={closeLocations}>
+            <Pressable accessibilityRole="button" accessibilityLabel="장소 목록 닫기" style={StyleSheet.absoluteFill} onPress={closeLocations} />
+            <View pointerEvents="box-none" style={[styles.menuPosition, { top: menuTop }]}>
+              <View style={styles.menu}>
+                <ScrollView style={styles.locationList}>
+                  {roots.map((folder) => {
+                    const active = folder.id === selected?.id;
+                    return (
+                      <Pressable
+                        key={folder.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={folder.name}
+                        accessibilityState={{ selected: active }}
+                        onPress={() => {
+                          closeLocations();
+                          if (!active) router.setParams({ locationId: folder.id });
+                        }}
+                        style={({ pressed }) => [styles.location, active && styles.selectedLocation, pressed && styles.pressed]}
+                      >
+                        <Text style={[styles.locationName, active && styles.selectedName]}>{folder.name}</Text>
+                        {active && <Text style={styles.check}>✓</Text>}
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            </View>
           </View>
         )}
-        <Text accessibilityRole="header" style={screenStyles.heading}>{selected?.name ?? '보관 장소'}</Text>
-        {selected && <ItemSearch locationId={selected.id} />}
-        {result.status === 'loading' && <ActivityIndicator accessibilityLabel="보관함 불러오는 중" />}
-        {result.status === 'error' && (
-          <>
-            <Text style={screenStyles.body}>보관함을 불러오지 못했어요.</Text>
-            <Button title="다시 시도" onPress={() => {
-              setResult({ status: 'loading' });
-              setAttempt((previous) => previous + 1);
-            }} />
-          </>
-        )}
-        {result.status === 'ready' && !selected && (
-          <Text style={screenStyles.body}>아직 등록된 보관 장소가 없어요.</Text>
-        )}
-        {selected && (
-          <>
-            <FolderItems key={`items-${selected.id}`} folderId={selected.id} />
-            <ChildFolders key={selected.id} parentId={selected.id} />
-          </>
-        )}
-      </ScrollView>
+      </View>
     </TabSlide>
   );
 }
 
 const styles = StyleSheet.create({
-  locations: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  location: {
-    minHeight: 44, justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 12, borderWidth: 1, borderColor: '#DEE7DE', backgroundColor: colors.surface,
+  screen: { flex: 1 },
+  locationTrigger: { alignSelf: 'flex-start', maxWidth: '100%', minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  triggerName: { flexShrink: 1 },
+  triggerIcon: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#FFEBAA', alignItems: 'center', justifyContent: 'center' },
+  chevron: {
+    width: 8, height: 8, marginTop: -3, borderRightWidth: 2, borderBottomWidth: 2,
+    borderColor: colors.text, transform: [{ rotate: '45deg' }],
   },
-  selectedLocation: { backgroundColor: '#DFEDE3', borderColor: '#BCD6C5' },
-  locationName: { color: colors.muted, fontSize: 14, fontWeight: '600' },
-  selectedName: { color: '#235941', fontWeight: '700' },
+  menuPosition: { position: 'absolute', left: screenStyles.content.padding, right: screenStyles.content.padding, bottom: 12 },
+  menu: {
+    flexShrink: 1, maxHeight: 320, backgroundColor: colors.surface, borderRadius: 14, padding: 4,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: '#E7E0D6', elevation: 5,
+    shadowColor: '#2E211C', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 5 },
+  },
+  locationList: { flexGrow: 0, flexShrink: 1 },
+  location: {
+    minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10,
+  },
+  selectedLocation: { backgroundColor: '#FFF5D7' },
+  locationName: { flex: 1, color: colors.text, fontSize: 16 },
+  selectedName: { fontWeight: '700' },
+  check: { color: '#69511B', fontSize: 17, fontWeight: '700' },
+  pressed: { opacity: 0.65 },
 });

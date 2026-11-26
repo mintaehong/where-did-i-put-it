@@ -351,10 +351,12 @@ test('보관함에서 물건 이름 일부를 입력하면 바로 결과가 나�
   await fireEvent.changeText(input, ' 스티 ');
   expect(await screen.findByText('우리 집 › 옷장')).toBeOnTheScreen();
   expect(searchItems).toHaveBeenLastCalledWith('스티', 'home');
+  await fireEvent.press(screen.getByRole('button', { name: '우리 집 장소 바꾸기' }));
   await fireEvent.press(screen.getByRole('button', { name: '회사' }));
   expect(screen.queryByText('우리 집 › 옷장')).toBeNull();
   expect(await screen.findByRole('link', { name: /스티커 봉투/ })).toBeOnTheScreen();
   expect(searchItems).toHaveBeenLastCalledWith('스티', 'office');
+  await fireEvent.press(screen.getByRole('button', { name: '회사 장소 바꾸기' }));
   await fireEvent.press(screen.getByRole('button', { name: '우리 집' }));
   expect(await screen.findByText('우리 집 › 옷장')).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('link', { name: /스티커/ }));
@@ -412,10 +414,12 @@ test('홈에서 대화 화면을 열고 여러 질문을 보낸 뒤 물건 상�
   expect(screen).toHavePathname('/storage');
   expect(screen).toHaveSearchParams({ tabSlide: 'right:1' });
   expect(screen.getByRole('tab', { name: '보관함', selected: true })).toBeOnTheScreen();
-  expect(await screen.findByRole('button', { name: '우리 집', selected: true })).toBeOnTheScreen();
+  await fireEvent.press(await screen.findByRole('button', { name: '우리 집 장소 바꾸기' }));
+  expect(screen.getByRole('button', { name: '우리 집', selected: true })).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('button', { name: '회사' }));
-  expect(await screen.findByRole('header', { name: '회사' })).toBeOnTheScreen();
+  await fireEvent.press(await screen.findByRole('button', { name: '회사 장소 바꾸기' }));
   expect(screen.getByRole('button', { name: '회사', selected: true })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: '장소 목록 닫기' }));
   await fireEvent.press(screen.getByRole('tab', { name: '물어보기' }));
   expect(screen).toHavePathname('/ask');
   expect(screen).toHaveSearchParams({ tabSlide: 'left:2' });
@@ -625,7 +629,7 @@ test('홈의 장소를 누르면 해당 장소가 선택된 보관함을 연다'
   expect(await screen.findByRole('link', { name: '우리 집' })).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('link', { name: '회사' }));
   expect(screen).toHavePathname('/storage');
-  expect(await screen.findByRole('header', { name: '회사' })).toBeOnTheScreen();
+  expect(await screen.findByRole('button', { name: '회사 장소 바꾸기' })).toBeOnTheScreen();
   expect(screen.queryByRole('button', { name: '장소 추가' })).toBeNull();
   expect(screen.queryByRole('button', { name: '회사 이름 변경' })).toBeNull();
   expect(screen.queryByRole('link', { name: '안방' })).toBeNull();
@@ -651,7 +655,7 @@ test('홈에서 장소를 추가하고 새 카드로 해당 보관함을 연다'
   const card = await screen.findByRole('link', { name: '회사' });
   jest.mocked(listRootFolders).mockResolvedValue([home, office]);
   await fireEvent.press(card);
-  expect(await screen.findByRole('header', { name: '회사' })).toBeOnTheScreen();
+  expect(await screen.findByRole('button', { name: '회사 장소 바꾸기' })).toBeOnTheScreen();
 });
 
 test('장소 추가에서 기본 커버를 고르고 카메라 사진으로 바꿔 저장한다', async () => {
