@@ -10,7 +10,7 @@ import HomeScreen from '../app/index';
 import ItemScreen from '../app/item/[id]';
 import NewItemScreen from '../app/item/new';
 import StorageScreen from '../app/storage';
-import { createChildFolder, createRootFolder, deleteEmptyChildFolder, listChildFolders, listRootChildFolders, listRootFolders, renameFolder } from '../src/db/folders';
+import { createChildFolder, createRootFolder, deleteEmptyChildFolder, listChildFolders, listRootChildFolders, listRootFolders, renameFolder, updateChildFolderCover } from '../src/db/folders';
 import { askForItems, attachItemPhoto, createItem, deleteItem, getItemDetails, listItems, listRecentItemsByLocation, moveItem, removeItemPhoto, renameItem, replaceItemPhoto, saveItemNote, searchItems } from '../src/db/items';
 
 jest.mock('react-native-keyboard-controller', () => jest.requireActual('react-native-keyboard-controller/jest'));
@@ -90,6 +90,7 @@ jest.mock('../src/db/folders', () => ({
   ]),
   listRootChildFolders: jest.fn(async () => []),
   createChildFolder: jest.fn(),
+  updateChildFolderCover: jest.fn(),
   createRootFolder: jest.fn(),
   deleteEmptyChildFolder: jest.fn(),
   renameFolder: jest.fn(async (_id: string, name: string) => { mockBedroomName = name; }),
@@ -195,6 +196,21 @@ test('보관함에서 우리 집을 거치지 않고 안방을 연다', async ()
   expect(screen).toHavePathname('/folder/closet');
   expect(await screen.findByRole('button', { name: '옷장 이름 변경' })).toBeOnTheScreen();
   expect(screen.getByLabelText('옷장 사진')).toHaveProp('source', { uri: 'file:///documents/place-covers/closet.jpg' });
+  await fireEvent.press(screen.getByRole('button', { name: '대표 이미지 변경' }));
+  expect(screen.getByRole('button', { name: '대표 이미지 저장' })).toBeDisabled();
+  await fireEvent.press(screen.getByRole('button', { name: '선반' }));
+  await fireEvent.press(screen.getByRole('button', { name: '대표 이미지 변경 닫기' }));
+  expect(screen.getByLabelText('옷장 사진')).toBeOnTheScreen();
+  expect(updateChildFolderCover).not.toHaveBeenCalled();
+  await fireEvent.press(screen.getByRole('button', { name: '대표 이미지 변경' }));
+  await fireEvent.press(screen.getByRole('button', { name: '선반' }));
+  jest.mocked(updateChildFolderCover).mockResolvedValueOnce('icon:shelf');
+  await fireEvent.press(screen.getByRole('button', { name: '대표 이미지 저장' }));
+  expect(updateChildFolderCover).toHaveBeenCalledWith('closet', { icon: 'shelf' });
+  expect(screen.queryByLabelText('옷장 사진')).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: '대표 이미지 변경' }));
+  expect(screen.getByRole('button', { name: '선반', selected: true })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: '대표 이미지 변경 닫기' }));
   expect(screen.getByRole('link', { name: '우리 집' })).toBeOnTheScreen();
 
   const passport = { id: 'passport', name: '여권', photoPath: null };

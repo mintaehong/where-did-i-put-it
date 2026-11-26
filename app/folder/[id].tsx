@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import ChildFolders from '../../src/ChildFolders';
 import FolderItems from '../../src/FolderItems';
+import FolderCoverSheet from '../../src/FolderCoverSheet';
 import FolderThumbnail from '../../src/FolderThumbnail';
 import EditableName from '../../src/EditableName';
 import { deleteEmptyChildFolder, getFolderPath, renameFolder } from '../../src/db/folders';
@@ -66,7 +67,11 @@ export default function FolderScreen() {
             ))}
             <Text style={screenStyles.body}>{current.name}</Text>
           </View>
-          <LocationTitle key={`title-${id}`} id={id} name={current.name} coverPath={current.coverPath} onDeleted={parent ? () => {
+          <LocationTitle key={`title-${id}`} id={id} name={current.name} coverPath={current.coverPath} onCoverSaved={parent ? (coverPath) => {
+            setResult((previous) => previous?.id === id && previous.path
+              ? { id, path: previous.path.map((folder) => folder.id === id ? { ...folder, coverPath } : folder) }
+              : previous);
+          } : undefined} onDeleted={parent ? () => {
             if (!navigation.isFocused()) return;
             router.dismissTo(result.path?.length === 2
               ? { pathname: '/storage', params: { locationId: parent.id } }
@@ -90,14 +95,16 @@ export default function FolderScreen() {
   );
 }
 
-function LocationTitle({ id, name, coverPath, children, onDeleted }: {
+function LocationTitle({ id, name, coverPath, children, onCoverSaved, onDeleted }: {
   id: string;
   name: string;
   coverPath?: string | null;
   children: ReactNode;
+  onCoverSaved?: (coverPath: string) => void;
   onDeleted?: () => void;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const [editingCover, setEditingCover] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<keyof typeof deleteMessages>();
   const pending = useRef(false);
@@ -126,7 +133,19 @@ function LocationTitle({ id, name, coverPath, children, onDeleted }: {
   return (
     <View style={styles.titleSection}>
       <View style={styles.titleRow}>
-        <FolderThumbnail name={name} coverPath={coverPath} />
+        {onCoverSaved ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="대표 이미지 변경"
+            onPress={() => setEditingCover(true)}
+            style={({ pressed }) => pressed && styles.pressed}
+          >
+            <FolderThumbnail name={name} coverPath={coverPath} />
+            <View style={styles.editBadge} accessible={false} importantForAccessibility="no-hide-descendants">
+              <Text style={styles.editSymbol}>↻</Text>
+            </View>
+          </Pressable>
+        ) : <FolderThumbnail name={name} coverPath={coverPath} />}
         <View style={styles.title}>{children}</View>
         {onDeleted && !confirming && (
           <Pressable accessibilityRole="button" onPress={() => setConfirming(true)} style={styles.action}>
@@ -134,6 +153,17 @@ function LocationTitle({ id, name, coverPath, children, onDeleted }: {
           </Pressable>
         )}
       </View>
+      {editingCover && onCoverSaved && (
+        <FolderCoverSheet
+          folderId={id}
+          coverPath={coverPath}
+          onClose={() => setEditingCover(false)}
+          onSaved={(nextPath) => {
+            onCoverSaved(nextPath);
+            setEditingCover(false);
+          }}
+        />
+      )}
       {confirming && (
         <View style={styles.confirmation}>
           {error ? (
@@ -167,6 +197,13 @@ const styles = StyleSheet.create({
   titleSection: { gap: 8 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   title: { flex: 1, minWidth: 0 },
+  pressed: { opacity: 0.65 },
+  editBadge: {
+    position: 'absolute', right: -3, bottom: -3, width: 20, height: 20, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: '#E7E0D6',
+  },
+  editSymbol: { color: '#69511B', fontSize: 14, fontWeight: '700' },
   confirmation: { gap: 8, padding: 12, backgroundColor: colors.surface, borderRadius: 12 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8 },
   action: { justifyContent: 'center', minHeight: 44, paddingHorizontal: 10 },

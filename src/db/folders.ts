@@ -160,6 +160,37 @@ export async function renameFolder(id: string, name: string) {
   if (result.changes === 0) throw new Error('보관 장소를 찾을 수 없어요.');
 }
 
+export async function updateChildFolderCover(id: string, cover: FolderCover) {
+  const db = await getStorage();
+  const stored = 'photo' in cover
+    ? await copyItemPhoto(cover.photo, randomUUID(), 'place-covers')
+    : { relativePath: `icon:${cover.icon}` };
+  const nextPath = stored.relativePath;
+  let previousPath: string | null = null;
+  try {
+    await db.withExclusiveTransactionAsync(async (transaction) => {
+      const previous = await transaction.getFirstAsync<{ coverPath: string | null }>(
+        'SELECT cover_path AS coverPath FROM folders WHERE id = ? AND parent_id IS NOT NULL', id,
+      );
+      if (!previous) throw new Error('보관 위치를 찾을 수 없어요.');
+      previousPath = previous.coverPath;
+      await transaction.runAsync(
+        'UPDATE folders SET cover_path = ?, updated_at = ? WHERE id = ?',
+        nextPath, new Date().toISOString(), id,
+      );
+    });
+  } catch (error) {
+    if ('file' in stored) discardItemPhoto(stored.file);
+    throw error;
+  }
+  if (previousPath !== nextPath) discardFolderCover(previousPath);
+  return nextPath;
+}
+
+function discardFolderCover(path: string | null) {
+  if (path && /^place-covers\/[a-f0-9-]+(?:\.[a-z0-9]{1,8})?$/i.test(path)) discardItemPhoto(path);
+}
+
 export async function deleteEmptyChildFolder(id: string) {
   const db = await getStorage();
   const deleted = await db.getFirstAsync<{ coverPath: string | null }>(
@@ -171,9 +202,7 @@ export async function deleteEmptyChildFolder(id: string) {
     id,
   );
   if (deleted) {
-    if (deleted.coverPath && /^place-covers\/[a-f0-9-]+(?:\.[a-z0-9]{1,8})?$/i.test(deleted.coverPath)) {
-      discardItemPhoto(deleted.coverPath);
-    }
+    discardFolderCover(deleted.coverPath);
     return 'deleted';
   }
 

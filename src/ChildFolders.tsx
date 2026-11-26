@@ -4,7 +4,7 @@ import { ActivityIndicator, Button, Pressable, StyleSheet, Text, View } from 're
 
 import { listChildFolders } from './db/folders';
 import FolderThumbnail from './FolderThumbnail';
-import NewFolderSheet from './NewFolderSheet';
+import FolderCoverSheet from './FolderCoverSheet';
 import { colors, screenStyles } from './theme';
 
 type FolderList =
@@ -109,7 +109,7 @@ export default function ChildFolders({ parentId }: { parentId: string }) {
         );
       })}</View>}
       {adding && (
-        <NewFolderSheet
+        <FolderCoverSheet
           parentId={parentId}
           onClose={() => setAdding(false)}
           onSaved={() => {

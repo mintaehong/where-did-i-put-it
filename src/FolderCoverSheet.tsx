@@ -5,18 +5,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NameInput } from './EditableName';
 import FormSaveButton from './FormSaveButton';
 import { pickItemPhoto } from './pickItemPhoto';
-import { createChildFolder, getFolderPath } from './db/folders';
-import { storageIcons, type FolderCover } from './placeCovers';
+import { createChildFolder, getFolderPath, updateChildFolderCover } from './db/folders';
+import { itemPhotoUri } from './itemPhotoFiles';
+import { storageIconForCover, storageIcons, type FolderCover } from './placeCovers';
 import StorageIconView from './StorageIconView';
 import { colors, screenStyles } from './theme';
 
 type FolderPath = Awaited<ReturnType<typeof getFolderPath>>;
 
-export default function NewFolderSheet({ parentId, onClose, onSaved }: {
-  parentId: string;
+type SheetProps = {
   onClose: () => void;
-  onSaved: () => void;
-}) {
+} & (
+  | { parentId: string; onSaved: () => void }
+  | { folderId: string; coverPath?: string | null; onSaved: (coverPath: string) => void }
+);
+
+export default function FolderCoverSheet(props: SheetProps) {
+  const { onClose } = props;
+  const parentId = 'parentId' in props ? props.parentId : undefined;
+  const editing = 'folderId' in props;
+  const initialPath = editing ? props.coverPath : undefined;
   const [path, setPath] = useState<FolderPath | null>();
   const [name, setName] = useState('');
   const [cover, setCover] = useState<FolderCover>();
@@ -28,10 +36,16 @@ export default function NewFolderSheet({ parentId, onClose, onSaved }: {
   const pending = useRef(false);
   const pickingPhoto = useRef(false);
   const parent = path?.at(-1);
-  const selectedIcon = cover && 'icon' in cover ? cover.icon : undefined;
-  const photo = cover && 'photo' in cover ? cover.photo : undefined;
+  const initialPhoto = initialPath?.startsWith('place-covers/') ? itemPhotoUri(initialPath) : undefined;
+  const initialIcon = editing && !initialPhoto ? storageIconForCover(initialPath) : undefined;
+  const selectedIcon = cover ? ('icon' in cover ? cover.icon : undefined) : initialIcon;
+  const photoUri = cover ? ('photo' in cover ? cover.photo.uri : undefined) : initialPhoto;
+  const unchangedIcon = cover && 'icon' in cover && initialPath === `icon:${cover.icon}`;
+  const saveDisabled = picking || saving || !cover || Boolean(unchangedIcon) || (!editing && (!parent || !name.trim()));
+  const title = editing ? '대표 이미지 변경' : '보관 위치 추가';
 
   useEffect(() => {
+    if (!parentId) return;
     let active = true;
     getFolderPath(parentId).then(
       (folders) => { if (active) setPath(folders); },
@@ -42,12 +56,14 @@ export default function NewFolderSheet({ parentId, onClose, onSaved }: {
 
   async function save() {
     const trimmed = name.trim();
-    if (!trimmed || !parent || !cover || pending.current || pickingPhoto.current) return;
+    if (saveDisabled || !cover || pending.current || pickingPhoto.current) return;
     pending.current = true;
     setSaving(true);
     setSaveError(false);
+    let coverPath: string | undefined;
     try {
-      await createChildFolder(parent.id, trimmed, cover);
+      if ('folderId' in props) coverPath = await updateChildFolderCover(props.folderId, cover);
+      else if (parent) await createChildFolder(parent.id, trimmed, cover);
     } catch {
       pending.current = false;
       setSaving(false);
@@ -56,7 +72,8 @@ export default function NewFolderSheet({ parentId, onClose, onSaved }: {
     }
 
     Keyboard.dismiss();
-    onSaved();
+    if ('folderId' in props && coverPath) props.onSaved(coverPath);
+    else if ('parentId' in props) props.onSaved();
   }
 
   function close() {
@@ -93,21 +110,21 @@ export default function NewFolderSheet({ parentId, onClose, onSaved }: {
         >
           <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.sheet} accessibilityViewIsModal>
             <View style={styles.header}>
-              <Text accessibilityRole="header" style={styles.title}>보관 위치 추가</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="보관 위치 추가 닫기" disabled={saving || picking} onPress={close} style={styles.close}>
+              <Text accessibilityRole="header" style={styles.title}>{title}</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel={`${title} 닫기`} disabled={saving || picking} onPress={close} style={styles.close}>
                 <Text style={styles.closeIcon}>×</Text>
               </Pressable>
             </View>
             <ScrollView style={styles.body} contentContainerStyle={styles.fields} keyboardShouldPersistTaps="handled">
-              {path === undefined ? (
+              {!editing && path === undefined ? (
                 <ActivityIndicator accessibilityLabel="상위 위치 불러오는 중" />
-              ) : !path?.length ? (
+              ) : !editing && !path?.length ? (
                 <Text accessibilityRole="alert" style={screenStyles.body}>
                   {path === null ? '상위 위치를 불러오지 못했어요.' : '상위 위치를 찾을 수 없어요.'}
                 </Text>
               ) : (
                 <>
-                  <View style={styles.nameField}>
+                  {!editing && <View style={styles.nameField}>
                     <Text style={styles.coverLabel}>위치 이름</Text>
                     <NameInput
                       accessibilityLabel="보관 위치 이름"
@@ -120,10 +137,10 @@ export default function NewFolderSheet({ parentId, onClose, onSaved }: {
                       returnKeyType="done"
                       style={styles.nameInput}
                     />
-                  </View>
+                  </View>}
                   <View style={styles.coverHeading}>
                     <Text accessibilityRole="header" style={styles.coverLabel}>대표 이미지</Text>
-                    <Text style={styles.required}>필수</Text>
+                    {!editing && <Text style={styles.required}>필수</Text>}
                   </View>
                   <View style={styles.coverChoices}>
                     <View style={styles.icons}>
@@ -136,7 +153,7 @@ export default function NewFolderSheet({ parentId, onClose, onSaved }: {
                           disabled={saving || picking}
                           onPress={() => {
                             setCover({ icon: id });
-                            setName((current) => current.trim() ? current : iconName);
+                            if (!editing) setName((current) => current.trim() ? current : iconName);
                             setShowPhotoSources(false);
                             setPhotoError(undefined);
                           }}
@@ -147,13 +164,13 @@ export default function NewFolderSheet({ parentId, onClose, onSaved }: {
                         </Pressable>
                       ))}
                     </View>
-                    <View style={[styles.photoRow, photo && styles.selectedPhotoRow]}>
-                      {photo && (
+                    <View style={[styles.photoRow, photoUri && styles.selectedPhotoRow]}>
+                      {photoUri && (
                         <View style={styles.photoSelection}>
                           <Image
                             accessible
                             accessibilityLabel="선택한 사진"
-                            source={{ uri: photo.uri }}
+                            source={{ uri: photoUri }}
                             style={styles.photoPreview}
                           />
                           <Text style={styles.photoLabel}>대표 사진</Text>
@@ -161,16 +178,16 @@ export default function NewFolderSheet({ parentId, onClose, onSaved }: {
                       )}
                       <Pressable
                         accessibilityRole="button"
-                        accessibilityLabel={photo ? '대표 사진 바꾸기' : '사진을 대표 이미지로 사용'}
+                        accessibilityLabel={photoUri ? '대표 사진 바꾸기' : '사진을 대표 이미지로 사용'}
                         accessibilityState={{ expanded: showPhotoSources }}
                         disabled={saving || picking}
                         onPress={() => {
                           Keyboard.dismiss();
                           setShowPhotoSources((open) => !open);
                         }}
-                        style={[styles.photoAction, !photo && styles.choosePhotoAction]}
+                        style={[styles.photoAction, !photoUri && styles.choosePhotoAction]}
                       >
-                        <Text style={styles.photoActionLabel}>{photo ? '바꾸기' : '＋  사진을 대표 이미지로 사용'}</Text>
+                        <Text style={styles.photoActionLabel}>{photoUri ? '바꾸기' : '＋  사진을 대표 이미지로 사용'}</Text>
                       </Pressable>
                     </View>
                     {showPhotoSources && (
@@ -185,12 +202,14 @@ export default function NewFolderSheet({ parentId, onClose, onSaved }: {
                     )}
                   </View>
                   {photoError && <Text accessibilityRole="alert" style={screenStyles.body}>{photoError}</Text>}
-                  {saveError && <Text accessibilityRole="alert" style={screenStyles.body}>보관 위치를 저장하지 못했어요. 다시 시도해 주세요.</Text>}
+                  {saveError && <Text accessibilityRole="alert" style={screenStyles.body}>
+                    {editing ? '대표 이미지를 저장하지 못했어요.' : '보관 위치를 저장하지 못했어요.'} 다시 시도해 주세요.
+                  </Text>}
                 </>
               )}
             </ScrollView>
-            {parent && (
-              <FormSaveButton label="보관 위치 저장" saving={saving} disabled={picking || saving || !name.trim() || !cover} onPress={save} />
+            {(editing || parent) && (
+              <FormSaveButton label={editing ? '대표 이미지 저장' : '보관 위치 저장'} saving={saving} disabled={saveDisabled} onPress={save} />
             )}
           </SafeAreaView>
         </KeyboardAvoidingView>
