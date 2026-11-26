@@ -1,7 +1,7 @@
 import { randomUUID } from 'expo-crypto';
 import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 
-import { copyItemPhoto, discardItemPhoto } from '../itemPhotoFiles';
+import { copyItemPhoto, discardItemPhoto, type SelectedPhoto } from '../itemPhotoFiles';
 import type { PlaceCover } from '../placeCovers';
 import { migrateDatabase } from './migrate';
 
@@ -83,8 +83,8 @@ export async function listRootChildFolders() {
   );
 }
 
-export function createChildFolder(parentId: string, name: string): Promise<{ id: string; name: string }> {
-  return createFolder(parentId, name);
+export function createChildFolder(parentId: string, name: string, photo?: SelectedPhoto) {
+  return createFolder(parentId, name, photo ? { photo } : undefined);
 }
 
 export function createRootFolder(name: string, cover?: PlaceCover) {
@@ -127,14 +127,20 @@ export async function renameFolder(id: string, name: string) {
 
 export async function deleteEmptyChildFolder(id: string) {
   const db = await getStorage();
-  const result = await db.runAsync(
+  const deleted = await db.getFirstAsync<{ coverPath: string | null }>(
     `DELETE FROM folders
      WHERE id = ? AND parent_id IS NOT NULL
        AND NOT EXISTS (SELECT 1 FROM folders AS child WHERE child.parent_id = folders.id)
-       AND NOT EXISTS (SELECT 1 FROM items WHERE items.folder_id = folders.id)`,
+       AND NOT EXISTS (SELECT 1 FROM items WHERE items.folder_id = folders.id)
+     RETURNING cover_path AS coverPath`,
     id,
   );
-  if (result.changes) return 'deleted';
+  if (deleted) {
+    if (deleted.coverPath && /^place-covers\/[a-f0-9-]+(?:\.[a-z0-9]{1,8})?$/i.test(deleted.coverPath)) {
+      discardItemPhoto(deleted.coverPath);
+    }
+    return 'deleted';
+  }
 
   const contents = await db.getFirstAsync<{ hasChildren: number; hasItems: number }>(
     `SELECT EXISTS (SELECT 1 FROM folders AS child WHERE child.parent_id = folders.id) AS hasChildren,

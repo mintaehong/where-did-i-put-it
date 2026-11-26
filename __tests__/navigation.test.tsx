@@ -105,19 +105,36 @@ jest.mock('../src/db/folders', () => ({
   },
 }));
 
-test('선택한 장소에 하위 폴더를 저장하고 목록에 표시한다', async () => {
+test('선택한 장소에 하위 폴더를 사진과 함께 저장하고 목록에 표시한다', async () => {
   jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }]);
-  jest.mocked(createChildFolder).mockResolvedValue({ id: 'closet', name: '옷장' });
+  const photo = { uri: 'file:///cache/closet.jpg', width: 100, height: 100 };
+  jest.mocked(launchImageLibraryAsync).mockResolvedValueOnce({ canceled: false, assets: [photo] });
+  const closet = { id: 'closet', name: '옷장', coverPath: 'place-covers/closet.jpg' };
+  jest.mocked(createChildFolder).mockResolvedValue(closet);
   await renderRouter({ storage: StorageScreen }, { initialUrl: '/storage' });
 
   await fireEvent.press(await screen.findByRole('button', { name: '보관 위치 추가' }));
-  const input = screen.getByLabelText('보관 위치 이름');
-  expect(screen.getByRole('button', { name: '저장' })).toBeDisabled();
+  expect(screen).toHavePathname('/storage');
+  expect(screen.getByRole('header', { name: '보관 위치 추가' })).toBeOnTheScreen();
+  const input = await screen.findByLabelText('보관 위치 이름');
+  expect(screen.getByText('우리 집 아래에 추가')).toBeOnTheScreen();
+  expect(screen.getByRole('button', { name: '보관 위치 저장' })).toBeDisabled();
   await fireEvent.changeText(input, '  옷장  ');
-  await fireEvent.press(screen.getByRole('button', { name: '저장' }));
+  expect(screen.queryByRole('button', { name: '앨범에서 사진 추가' })).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: '사진 추가' }));
+  await fireEvent.press(screen.getByRole('button', { name: '사진 추가 취소' }));
+  expect(screen.queryByRole('button', { name: '앨범에서 사진 추가' })).toBeNull();
+  expect(screen.getByLabelText('보관 위치 이름')).toHaveProp('value', '  옷장  ');
+  await fireEvent.press(screen.getByRole('button', { name: '사진 추가' }));
+  await fireEvent.press(screen.getByRole('button', { name: '앨범에서 사진 추가' }));
+  expect(await screen.findByLabelText('선택한 사진')).toBeOnTheScreen();
+  jest.mocked(listChildFolders).mockResolvedValueOnce([closet]);
+  await fireEvent.press(screen.getByRole('button', { name: '보관 위치 저장' }));
 
   expect(createChildFolder).toHaveBeenCalledTimes(1);
-  expect(createChildFolder).toHaveBeenCalledWith('home', '옷장');
+  expect(createChildFolder).toHaveBeenCalledWith('home', '옷장', photo);
+  expect(screen).toHavePathname('/storage');
+  expect(screen.queryByRole('header', { name: '보관 위치 추가' })).toBeNull();
   expect(await screen.findByRole('link', { name: '옷장' })).toBeOnTheScreen();
 });
 
@@ -147,11 +164,15 @@ test('보관함에서 우리 집을 거치지 않고 안방을 연다', async ()
   expect(renameFolder).toHaveBeenCalledWith('bedroom', '침실');
   expect(await screen.findByRole('button', { name: '침실 이름 변경' })).toBeOnTheScreen();
 
-  jest.mocked(createChildFolder).mockResolvedValue({ id: 'closet', name: '옷장' });
+  const closet = { id: 'closet', name: '옷장', coverPath: null };
+  jest.mocked(createChildFolder).mockResolvedValue(closet);
   await fireEvent.press(await screen.findByRole('button', { name: '보관 위치 추가' }));
-  await fireEvent.changeText(screen.getByLabelText('보관 위치 이름'), '옷장');
-  await fireEvent.press(screen.getByRole('button', { name: '저장' }));
+  await fireEvent.changeText(await screen.findByLabelText('보관 위치 이름'), '옷장');
+  expect(screen.getByText('우리 집 › 침실 아래에 추가')).toBeOnTheScreen();
+  jest.mocked(listChildFolders).mockResolvedValueOnce([closet]);
+  await fireEvent.press(screen.getByRole('button', { name: '보관 위치 저장' }));
   expect(createChildFolder).toHaveBeenCalledWith('bedroom', '옷장');
+  expect(screen).toHavePathname('/folder/bedroom');
 
   await fireEvent.press(await screen.findByRole('link', { name: '옷장' }));
   expect(screen).toHavePathname('/folder/closet');

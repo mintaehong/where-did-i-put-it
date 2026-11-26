@@ -1,8 +1,9 @@
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, Text } from 'react-native';
 
 import { NameInput } from '../../src/EditableName';
+import FormSaveButton from '../../src/FormSaveButton';
 import ItemLocation from '../../src/ItemLocation';
 import ItemNote from '../../src/ItemNote';
 import ItemPhoto from '../../src/ItemPhoto';
@@ -114,27 +115,9 @@ function NewItem({ folderId }: { folderId?: string }) {
           <ItemLocation folderId={destination.id} path={path} onMoved={(_folder, nextPath) => setPath(nextPath)} disabled={saving} />
           <ItemNote note={note} onChange={setNote} disabled={saving} />
           {saveError && <Text accessibilityRole="alert" style={screenStyles.body}>물건을 저장하지 못했어요. 다시 시도해 주세요.</Text>}
-          <Pressable
-            accessibilityRole="button"
-            disabled={saveDisabled}
-            onPress={save}
-            style={({ pressed }) => [styles.save, pressed && styles.savePressed, saveDisabled && styles.saveDisabled]}
-          >
-            <Text style={[styles.saveLabel, saveDisabled && styles.saveLabelDisabled]}>{saving ? '저장 중' : '물건 저장'}</Text>
-          </Pressable>
+          <FormSaveButton label="물건 저장" saving={saving} disabled={saveDisabled} onPress={save} />
         </>
       )}
     </ItemScreenScroll>
   );
 }
-
-const styles = StyleSheet.create({
-  save: {
-    minHeight: 50, borderRadius: 16, backgroundColor: '#FFEBAA',
-    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 10,
-  },
-  savePressed: { backgroundColor: '#F6DB86' },
-  saveDisabled: { backgroundColor: '#F0EAE1' },
-  saveLabel: { color: colors.text, fontSize: 16, fontWeight: '700' },
-  saveLabelDisabled: { color: '#82766C' },
-});
