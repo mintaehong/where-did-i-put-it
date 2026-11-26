@@ -33,6 +33,7 @@ function NewItem({ folderId }: { folderId?: string }) {
   const pending = useRef(false);
   const pickingPhoto = useRef(false);
   const destination = path.at(-1);
+  const saveDisabled = picking || saving || !name.trim();
 
   useEffect(() => {
     if (!folderId) {
@@ -115,11 +116,11 @@ function NewItem({ folderId }: { folderId?: string }) {
           {saveError && <Text accessibilityRole="alert" style={screenStyles.body}>물건을 저장하지 못했어요. 다시 시도해 주세요.</Text>}
           <Pressable
             accessibilityRole="button"
-            disabled={picking || saving || !name.trim()}
+            disabled={saveDisabled}
             onPress={save}
-            style={({ pressed }) => [styles.save, (picking || saving || !name.trim() || pressed) && styles.dimmed]}
+            style={({ pressed }) => [styles.save, pressed && styles.savePressed, saveDisabled && styles.saveDisabled]}
           >
-            <Text style={styles.saveLabel}>{saving ? '저장 중' : '물건 저장'}</Text>
+            <Text style={[styles.saveLabel, saveDisabled && styles.saveLabelDisabled]}>{saving ? '저장 중' : '물건 저장'}</Text>
           </Pressable>
         </>
       )}
@@ -128,7 +129,12 @@ function NewItem({ folderId }: { folderId?: string }) {
 }
 
 const styles = StyleSheet.create({
-  save: { minHeight: 48, borderRadius: 12, backgroundColor: '#2D6654', alignItems: 'center', justifyContent: 'center' },
-  saveLabel: { color: colors.surface, fontSize: 16, fontWeight: '700' },
-  dimmed: { opacity: 0.5 },
+  save: {
+    minHeight: 50, borderRadius: 16, backgroundColor: '#FFEBAA',
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 10,
+  },
+  savePressed: { backgroundColor: '#F6DB86' },
+  saveDisabled: { backgroundColor: '#F0EAE1' },
+  saveLabel: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  saveLabelDisabled: { color: '#82766C' },
 });
