@@ -35,23 +35,23 @@ export async function listRootFolders() {
 
 export async function getFolderPath(id: string) {
   const db = await getStorage();
-  const ancestors = await db.getAllAsync<{ id: string; name: string; parent_id: string | null }>(
+  const ancestors = await db.getAllAsync<{ id: string; name: string; parent_id: string | null; cover_path: string | null }>(
     `WITH RECURSIVE ancestors AS (
-       SELECT id, name, parent_id FROM folders WHERE id = ?
+       SELECT id, name, parent_id, cover_path FROM folders WHERE id = ?
        UNION
-       SELECT folders.id, folders.name, folders.parent_id
+       SELECT folders.id, folders.name, folders.parent_id, folders.cover_path
        FROM folders JOIN ancestors ON folders.id = ancestors.parent_id
      )
-     SELECT id, name, parent_id FROM ancestors`,
+     SELECT id, name, parent_id, cover_path FROM ancestors`,
     id,
   );
   const byId = new Map(ancestors.map((folder) => [folder.id, folder]));
-  const path: { id: string; name: string }[] = [];
+  const path: { id: string; name: string; coverPath?: string | null }[] = [];
   let nextId: string | null = id;
   while (nextId !== null) {
     const folder = byId.get(nextId);
     if (!folder) return [];
-    path.push({ id: folder.id, name: folder.name });
+    path.push({ id: folder.id, name: folder.name, coverPath: folder.cover_path });
     byId.delete(nextId);
     nextId = folder.parent_id;
   }

@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import ChildFolders from '../../src/ChildFolders';
 import FolderItems from '../../src/FolderItems';
+import FolderThumbnail from '../../src/FolderThumbnail';
 import EditableName from '../../src/EditableName';
 import { deleteEmptyChildFolder, getFolderPath, renameFolder } from '../../src/db/folders';
 import { colors, screenStyles } from '../../src/theme';
@@ -65,7 +66,7 @@ export default function FolderScreen() {
             ))}
             <Text style={screenStyles.body}>{current.name}</Text>
           </View>
-          <LocationTitle key={`title-${id}`} id={id} name={current.name} onDeleted={parent ? () => {
+          <LocationTitle key={`title-${id}`} id={id} name={current.name} coverPath={current.coverPath} onDeleted={parent ? () => {
             if (!navigation.isFocused()) return;
             router.dismissTo(result.path?.length === 2
               ? { pathname: '/storage', params: { locationId: parent.id } }
@@ -89,9 +90,10 @@ export default function FolderScreen() {
   );
 }
 
-function LocationTitle({ id, name, children, onDeleted }: {
+function LocationTitle({ id, name, coverPath, children, onDeleted }: {
   id: string;
   name: string;
+  coverPath?: string | null;
   children: ReactNode;
   onDeleted?: () => void;
 }) {
@@ -124,6 +126,7 @@ function LocationTitle({ id, name, children, onDeleted }: {
   return (
     <View style={styles.titleSection}>
       <View style={styles.titleRow}>
+        <FolderThumbnail name={name} coverPath={coverPath} />
         <View style={styles.title}>{children}</View>
         {onDeleted && !confirming && (
           <Pressable accessibilityRole="button" onPress={() => setConfirming(true)} style={styles.action}>

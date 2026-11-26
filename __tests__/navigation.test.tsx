@@ -98,7 +98,7 @@ jest.mock('../src/db/folders', () => ({
     const path = [
       { id: 'home', name: '우리 집' },
       { id: 'bedroom', name: mockBedroomName },
-      { id: 'closet', name: '옷장' },
+      { id: 'closet', name: '옷장', coverPath: 'place-covers/closet.jpg' },
     ];
     if (id === 'warehouse') return [{ id, name: '창고' }];
     return path.slice(0, path.findIndex((folder) => folder.id === id) + 1);
@@ -194,6 +194,7 @@ test('보관함에서 우리 집을 거치지 않고 안방을 연다', async ()
   await fireEvent.press(await screen.findByRole('link', { name: '옷장' }));
   expect(screen).toHavePathname('/folder/closet');
   expect(await screen.findByRole('button', { name: '옷장 이름 변경' })).toBeOnTheScreen();
+  expect(screen.getByLabelText('옷장 사진')).toHaveProp('source', { uri: 'file:///documents/place-covers/closet.jpg' });
   expect(screen.getByRole('link', { name: '우리 집' })).toBeOnTheScreen();
 
   const passport = { id: 'passport', name: '여권', photoPath: null };

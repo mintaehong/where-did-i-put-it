@@ -1,12 +1,10 @@
 import { Link, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Button, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Button, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { listChildFolders } from './db/folders';
-import { itemPhotoUri } from './itemPhotoFiles';
+import FolderThumbnail from './FolderThumbnail';
 import NewFolderSheet from './NewFolderSheet';
-import { storageIconForCover } from './placeCovers';
-import StorageIconView from './StorageIconView';
 import { colors, screenStyles } from './theme';
 
 type FolderList =
@@ -86,19 +84,7 @@ export default function ChildFolders({ parentId }: { parentId: string }) {
               accessibilityHint={hint || undefined}
             >
               <View style={[styles.folder, index > 0 && styles.rowBorder]}>
-                {folder.coverPath?.startsWith('place-covers/') ? (
-                  <Image
-                    accessible={false}
-                    accessibilityLabel={`${folder.name} 사진`}
-                    source={{ uri: itemPhotoUri(folder.coverPath) }}
-                    resizeMode="cover"
-                    style={styles.thumbnail}
-                  />
-                ) : (
-                  <View style={styles.iconBadge}>
-                    <StorageIconView icon={storageIconForCover(folder.coverPath)} />
-                  </View>
-                )}
+                <FolderThumbnail name={folder.name} coverPath={folder.coverPath} />
                 <View style={styles.folderText}>
                   <Text style={styles.folderName}>{folder.name}</Text>
                   {preview !== '' && (
@@ -193,9 +179,4 @@ const styles = StyleSheet.create({
   previewText: { color: colors.muted, fontSize: 12 },
   previewLabel: { color: '#69511B', fontSize: 12, fontWeight: '600' },
   chevron: { color: colors.muted, fontSize: 20 },
-  thumbnail: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#FFF5D7' },
-  iconBadge: {
-    width: 48, height: 48, borderRadius: 12, backgroundColor: '#FFF5D7',
-    alignItems: 'center', justifyContent: 'center',
-  },
 });
