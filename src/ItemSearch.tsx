@@ -67,7 +67,7 @@ export default function ItemSearch({ locationId }: { locationId: string }) {
             </Pressable>
           ) : result.items.length === 0 ? (
             <Text style={styles.message}>‘{query}’에 해당하는 물건이 없어요.</Text>
-          ) : result.items.map((item) => <ItemResult key={item.id} item={item} />)}
+          ) : result.items.map((item) => <ItemResult key={item.id} item={item} highlight={query} />)}
         </View>
       )}
     </View>
