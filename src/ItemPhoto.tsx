@@ -3,6 +3,7 @@ import { Animated, Easing, Image, Modal, Platform, Pressable, StyleSheet, Text, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { attachItemPhoto, removeItemPhoto, replaceItemPhoto } from './db/items';
+import DeleteConfirmation from './DeleteConfirmation';
 import { itemPhotoUri, type SelectedPhoto } from './itemPhotoFiles';
 import { pickItemPhoto } from './pickItemPhoto';
 import { colors, screenStyles } from './theme';
@@ -212,30 +213,16 @@ export default function ItemPhoto(props: PhotoProps) {
               </Animated.View>
             </View>
           </Modal>
-          <Modal visible={confirmDelete} transparent animationType="fade" onRequestClose={cancelDelete}>
-            <View style={styles.dialogOverlay}>
-              <Pressable accessible={false} style={StyleSheet.absoluteFill} onPress={cancelDelete} />
-              <View style={styles.dialog} accessibilityViewIsModal>
-                <Text accessibilityRole="header" style={styles.dialogTitle}>사진을 삭제할까요?</Text>
-                <Text style={screenStyles.body}>첨부 사진만 삭제돼요.</Text>
-                {error && <Text accessibilityRole="alert" style={screenStyles.body}>{error}</Text>}
-                <View style={styles.photoActions}>
-                  <Pressable accessibilityRole="button" disabled={busy} onPress={cancelDelete} style={styles.dialogButton}>
-                    <Text style={styles.sourceLabel}>취소</Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="사진 삭제 확인"
-                    disabled={busy}
-                    onPress={deletePhoto}
-                    style={[styles.dialogButton, styles.deleteButton, busy && styles.dimmed]}
-                  >
-                    <Text style={styles.deleteButtonLabel}>{busy ? '삭제 중' : '삭제'}</Text>
-                  </Pressable>
-                </View>
-              </View>
-            </View>
-          </Modal>
+          <DeleteConfirmation
+            visible={confirmDelete}
+            title="사진을 삭제할까요?"
+            message="첨부 사진만 삭제돼요."
+            confirmLabel="사진 삭제 확인"
+            busy={busy}
+            error={error}
+            onCancel={cancelDelete}
+            onConfirm={deletePhoto}
+          />
         </>
       )}
     </View>
@@ -336,12 +323,8 @@ const styles = StyleSheet.create({
   sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#241A165C' },
   sheet: { backgroundColor: '#FFF8E9', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
   sheetContent: { width: '100%', maxWidth: 480, alignSelf: 'center', padding: 20, gap: 12 },
-  dialogOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#241A165C', padding: 24 },
-  dialog: { backgroundColor: colors.surface, width: '100%', maxWidth: 380, borderRadius: 20, padding: 20, gap: 8 },
   dialogTitle: { color: colors.text, fontSize: 19, fontWeight: '700' },
   dialogButton: { minHeight: 44, justifyContent: 'center', alignItems: 'center', borderRadius: 12, paddingHorizontal: 16 },
-  deleteButton: { backgroundColor: colors.accent },
-  deleteButtonLabel: { color: colors.surface, fontSize: 14, fontWeight: '700' },
   deleteLabel: { color: colors.accent, fontSize: 14, fontWeight: '700' },
   previewBar: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   previewLabel: { flex: 1 },

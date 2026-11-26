@@ -283,6 +283,8 @@ test('물건 삭제를 확인하면 보관함 목록에서 사라진다', async 
 
   await fireEvent.press(await screen.findByRole('link', { name: '시계' }));
   await fireEvent.press(await screen.findByRole('button', { name: '물건 삭제' }));
+  expect(screen.getByRole('header', { name: '시계 삭제할까요?' })).toBeOnTheScreen();
+  expect(screen.getByText('첨부 사진도 함께 삭제돼요.')).toBeOnTheScreen();
   await fireEvent.press(screen.getByRole('button', { name: '취소' }));
   expect(deleteItem).not.toHaveBeenCalled();
   expect(screen).toHavePathname('/item/watch');

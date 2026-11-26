@@ -1,8 +1,9 @@
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Keyboard, Pressable, StyleSheet, Text } from 'react-native';
 
 import { deleteItem, getItemDetails, renameItem } from '../../src/db/items';
+import DeleteConfirmation from '../../src/DeleteConfirmation';
 import EditableName from '../../src/EditableName';
 import ItemLocation from '../../src/ItemLocation';
 import ItemNote from '../../src/ItemNote';
@@ -100,40 +101,35 @@ function DeleteItem({ itemId, itemName, onDeleted }: {
     onDeleted();
   }
 
-  if (!confirming) {
-    return (
-      <Pressable accessibilityRole="button" onPress={() => setConfirming(true)} style={styles.changePhoto}>
-        <Text style={styles.deleteLabel}>물건 삭제</Text>
-      </Pressable>
-    );
+  function cancel() {
+    if (pending.current) return;
+    setConfirming(false);
+    setError(false);
   }
 
   return (
-    <View style={[styles.placeholder, styles.deletePanel]}>
-      <Text style={styles.label}>{itemName}을(를) 삭제할까요?</Text>
-      <Text style={screenStyles.body}>첨부 사진도 함께 삭제돼요.</Text>
-      {error && <Text accessibilityRole="alert" style={screenStyles.body}>물건을 삭제하지 못했어요. 다시 시도해 주세요.</Text>}
-      <View style={styles.photoActions}>
-        <Pressable accessibilityRole="button" disabled={busy} onPress={() => {
-          setConfirming(false);
-          setError(false);
-        }} style={styles.changePhoto}>
-          <Text style={styles.choiceLabel}>취소</Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" disabled={busy} onPress={confirm} style={styles.changePhoto}>
-          <Text style={styles.deleteLabel}>{busy ? '삭제 중' : '물건 삭제 확인'}</Text>
-        </Pressable>
-      </View>
-    </View>
+    <>
+      <Pressable accessibilityRole="button" onPress={() => {
+        Keyboard.dismiss();
+        setConfirming(true);
+      }} style={styles.deleteAction}>
+        <Text style={styles.deleteLabel}>물건 삭제</Text>
+      </Pressable>
+      <DeleteConfirmation
+        visible={confirming}
+        title={`${itemName} 삭제할까요?`}
+        message="첨부 사진도 함께 삭제돼요."
+        confirmLabel="물건 삭제 확인"
+        busy={busy}
+        error={error ? '물건을 삭제하지 못했어요. 다시 시도해 주세요.' : undefined}
+        onCancel={cancel}
+        onConfirm={confirm}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  placeholder: { padding: 20, borderRadius: 16, backgroundColor: colors.surface },
-  changePhoto: { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 },
-  photoActions: { flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 4 },
-  deletePanel: { gap: 4 },
+  deleteAction: { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 },
   deleteLabel: { color: colors.accent, fontSize: 14, fontWeight: '700' },
-  choiceLabel: { color: '#2D6654', fontSize: 14, fontWeight: '700', textAlign: 'center' },
-  label: { color: colors.text, fontSize: 16, fontWeight: '700' },
 });
