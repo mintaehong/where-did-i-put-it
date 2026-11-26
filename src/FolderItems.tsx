@@ -2,6 +2,7 @@ import { Link, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Button, Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
+import { TabIcon } from './BottomNavigation';
 import { listItems } from './db/items';
 import { itemPhotoUri } from './itemPhotoFiles';
 import { colors, screenStyles } from './theme';
@@ -65,7 +66,10 @@ export default function FolderItems({ folderId }: { folderId: string }) {
         <>
           {items.length === 0 ? (
             <View style={styles.empty}>
-              <Text style={screenStyles.body}>아직 등록된 물건이 없어요.</Text>
+              <View style={styles.emptyIcon}>
+                <TabIcon path="/storage" color={colors.text} />
+              </View>
+              <Text style={[screenStyles.body, styles.emptyMessage]}>아직 등록된 물건이 없어요.</Text>
             </View>
           ) : (
             <ItemCollection items={items} isList={view === 'list'} />
@@ -188,11 +192,21 @@ const styles = StyleSheet.create({
   viewLabel: { color: colors.muted, fontSize: 13, fontWeight: '600' },
   activeViewLabel: { color: colors.text, fontWeight: '700' },
   empty: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     borderRadius: 14,
-    backgroundColor: '#F1F3EA',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
+  emptyIcon: {
+    width: 38, height: 38, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 10, backgroundColor: colors.primarySoft,
+  },
+  emptyMessage: { flex: 1 },
   itemGrid: { gap: 12 },
   cardRow: { flexDirection: 'row', gap: 10 },
   cardColumn: { flex: 1, minWidth: 0 },
