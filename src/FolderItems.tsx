@@ -70,7 +70,14 @@ export default function FolderItems({ folderId }: { folderId: string }) {
           ) : (
             <ItemCollection items={items} isList={view === 'list'} />
           )}
-          <Button title="물건 추가" onPress={() => router.push({ pathname: '/item/new', params: { folderId } })} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="물건 추가"
+            onPress={() => router.push({ pathname: '/item/new', params: { folderId } })}
+            style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
+          >
+            <Text style={styles.addLabel}>＋ 물건 추가</Text>
+          </Pressable>
         </>
       )}
     </>
@@ -164,6 +171,12 @@ function ItemCollection({ items, isList }: {
 }
 
 const styles = StyleSheet.create({
+  addButton: {
+    minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 14,
+    backgroundColor: '#FFEBAA', paddingHorizontal: 16, paddingVertical: 10,
+  },
+  addButtonPressed: { backgroundColor: '#F6DB86' },
+  addLabel: { color: colors.text, fontSize: 15, fontWeight: '700' },
   heading: { color: colors.text, fontSize: 18, fontWeight: '700' },
   sectionHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   viewToggle: { flexDirection: 'row', backgroundColor: '#EAF1EA', borderRadius: 12, padding: 3 },
