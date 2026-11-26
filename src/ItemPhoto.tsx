@@ -17,7 +17,6 @@ type PhotoProps = {
   photo?: SelectedPhoto;
   onChange: (photo?: SelectedPhoto) => void;
   onPickingChange: (picking: boolean) => void;
-  onCancel?: () => void;
   disabled: boolean;
 };
 type PhotoSource = 'camera' | 'album';
@@ -162,20 +161,7 @@ export default function ItemPhoto(props: PhotoProps) {
           </View>
       ) : !previousPath ? (
         <>
-          <View style={styles.photoHeader}>
-            <Text accessibilityRole="header" style={styles.label}>사진 추가</Text>
-            {draft?.onCancel && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="사진 추가 취소"
-                disabled={disabled}
-                onPress={draft.onCancel}
-                style={({ pressed }) => [styles.closePhoto, (disabled || pressed) && styles.dimmed]}
-              >
-                <Text style={styles.cancelIcon}>×</Text>
-              </Pressable>
-            )}
-          </View>
+          <Text accessibilityRole="header" style={styles.label}>사진 추가</Text>
           <PhotoChoices disabled={disabled} onChoose={choose} />
         </>
       ) : (
@@ -298,8 +284,6 @@ const styles = StyleSheet.create({
   photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: 16, backgroundColor: colors.surface },
   placeholder: { padding: 20, borderRadius: 16, backgroundColor: colors.surface },
   photoPanel: { gap: 10, padding: 14, borderRadius: 16, backgroundColor: '#FFF8E9' },
-  photoHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  closePhoto: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   photoChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   choice: {
     flexGrow: 1,

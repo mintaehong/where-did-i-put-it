@@ -1,9 +1,12 @@
 import { Link, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Button, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Button, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { listChildFolders } from './db/folders';
+import { itemPhotoUri } from './itemPhotoFiles';
 import NewFolderSheet from './NewFolderSheet';
+import { storageIconForCover } from './placeCovers';
+import StorageIconView from './StorageIconView';
 import { colors, screenStyles } from './theme';
 
 type FolderList =
@@ -61,16 +64,64 @@ export default function ChildFolders({ parentId }: { parentId: string }) {
       {folders.length === 0 && (
         <Text style={screenStyles.body}>아직 이곳에 등록된 보관 장소가 없어요.</Text>
       )}
-      {folders.map((folder) => (
-        <Link
-          key={folder.id}
-          href={{ pathname: '/folder/[id]', params: { id: folder.id } }}
-          push
-          style={styles.folder}
-        >
-          {folder.name}
-        </Link>
-      ))}
+      {folders.length > 0 && <View style={styles.folderList}>{folders.map((folder, index) => {
+        const preview = [folder.firstChildName, folder.secondChildName].filter(Boolean).join(' · ');
+        const extraCount = (folder.childCount ?? 0) - 2;
+        const items = [folder.firstItemName, folder.secondItemName].filter(Boolean).join(' · ');
+        const extraItems = (folder.itemCount ?? 0) - 2;
+        const hint = [
+          preview && `하위 위치: ${preview}${extraCount > 0 ? ` 외 ${extraCount}곳` : ''}`,
+          items && `보관 물건: ${items}${extraItems > 0 ? ` 외 ${extraItems}개` : ''}`,
+        ].filter(Boolean).join('. ');
+        return (
+          <Link
+            key={folder.id}
+            href={{ pathname: '/folder/[id]', params: { id: folder.id } }}
+            push
+            asChild
+          >
+            <Pressable
+              accessibilityRole="link"
+              accessibilityLabel={folder.name}
+              accessibilityHint={hint || undefined}
+            >
+              <View style={[styles.folder, index > 0 && styles.rowBorder]}>
+                {folder.coverPath?.startsWith('place-covers/') ? (
+                  <Image
+                    accessible={false}
+                    accessibilityLabel={`${folder.name} 사진`}
+                    source={{ uri: itemPhotoUri(folder.coverPath) }}
+                    resizeMode="cover"
+                    style={styles.thumbnail}
+                  />
+                ) : (
+                  <View style={styles.iconBadge}>
+                    <StorageIconView icon={storageIconForCover(folder.coverPath)} />
+                  </View>
+                )}
+                <View style={styles.folderText}>
+                  <Text style={styles.folderName}>{folder.name}</Text>
+                  {preview !== '' && (
+                    <View style={styles.preview}>
+                      <Text style={styles.previewLabel}>하위 위치</Text>
+                      <Text numberOfLines={1} style={[styles.previewText, styles.previewNames]}>{preview}</Text>
+                      {extraCount > 0 && <Text style={styles.previewText}>외 {extraCount}곳</Text>}
+                    </View>
+                  )}
+                  {items !== '' && (
+                    <View style={styles.preview}>
+                      <Text style={styles.previewLabel}>보관 물건</Text>
+                      <Text numberOfLines={1} style={[styles.previewText, styles.previewNames]}>{items}</Text>
+                      {extraItems > 0 && <Text style={styles.previewText}>외 {extraItems}개</Text>}
+                    </View>
+                  )}
+                </View>
+                <Text accessible={false} style={styles.chevron}>›</Text>
+              </View>
+            </Pressable>
+          </Link>
+        );
+      })}</View>}
       {adding && (
         <NewFolderSheet
           parentId={parentId}
@@ -88,7 +139,7 @@ export default function ChildFolders({ parentId }: { parentId: string }) {
 const styles = StyleSheet.create({
   section: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#D5DFD8',
+    borderTopColor: '#E7E0D6',
     paddingTop: 12,
     gap: 8,
   },
@@ -100,7 +151,7 @@ const styles = StyleSheet.create({
     columnGap: 8,
   },
   heading: {
-    color: colors.muted,
+    color: colors.text,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -111,19 +162,40 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   addButtonPressed: {
-    backgroundColor: '#DFEDE3',
+    backgroundColor: '#FFF5D7',
   },
   addLabel: {
-    color: '#2D6654',
+    color: '#69511B',
     fontSize: 14,
     fontWeight: '700',
   },
+  folderList: {
+    borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: '#E7E0D6',
+    backgroundColor: colors.surface, overflow: 'hidden',
+  },
+  rowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E7E0D6' },
   folder: {
-    backgroundColor: '#E8EFE8',
-    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 76,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+  },
+  folderText: { flex: 1, minWidth: 0, gap: 3 },
+  folderName: {
     color: colors.text,
     fontSize: 16,
     fontWeight: '600',
-    padding: 12,
+  },
+  preview: { flexDirection: 'row', alignItems: 'baseline', gap: 5 },
+  previewNames: { flexShrink: 1 },
+  previewText: { color: colors.muted, fontSize: 12 },
+  previewLabel: { color: '#69511B', fontSize: 12, fontWeight: '600' },
+  chevron: { color: colors.muted, fontSize: 20 },
+  thumbnail: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#FFF5D7' },
+  iconBadge: {
+    width: 48, height: 48, borderRadius: 12, backgroundColor: '#FFF5D7',
+    alignItems: 'center', justifyContent: 'center',
   },
 });
