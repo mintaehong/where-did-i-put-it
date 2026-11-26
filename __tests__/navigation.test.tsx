@@ -523,7 +523,7 @@ test('목록에서 물건 상세를 열어 사진과 전체 보관 위치를 확
   await renderRouter({ 'folder/[id]': FolderScreen, 'item/[id]': ItemScreen }, { initialUrl: '/folder/closet' });
 
   expect(await screen.findByRole('button', { name: '카드 보기', selected: true })).toBeOnTheScreen();
-  expect(screen.getByText('시계')).toHaveProp('numberOfLines', 2);
+  expect(screen.getByText('시계')).toHaveProp('numberOfLines', 1);
   await fireEvent.press(screen.getByRole('button', { name: '목록 보기' }));
   expect(screen.getByRole('button', { name: '목록 보기', selected: true })).toBeOnTheScreen();
   expect(screen.getByText('시계')).toHaveProp('numberOfLines', 1);

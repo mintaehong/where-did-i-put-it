@@ -92,7 +92,7 @@ function ItemCollection({ items, isList }: {
   const [layoutWidth, setLayoutWidth] = useState<number>();
   const pageWidth = layoutWidth ?? Math.max(1, width - 48);
 
-  function renderItem(item: typeof items[number]) {
+  function renderItem(item: typeof items[number], separated = false) {
     const mediaStyle = isList ? styles.listMedia : styles.cardMedia;
     const media = item.photoPath ? (
       <Image
@@ -113,22 +113,22 @@ function ItemCollection({ items, isList }: {
         <Pressable
           accessibilityRole="link"
           accessibilityLabel={item.name}
-          style={({ pressed }) => [styles.itemCard, pressed && styles.cardPressed]}
+          style={({ pressed }) => pressed && styles.cardPressed}
         >
           {isList ? (
-            <View style={styles.listRow}>
+            <View style={[styles.listRow, separated && styles.listDivider]}>
               <Text numberOfLines={1} style={styles.cardName}>{item.name}</Text>
               {media}
-              <Text style={styles.chevron}>›</Text>
+              <Text accessible={false} style={styles.cardChevron}>›</Text>
             </View>
           ) : (
-            <>
+            <View style={styles.itemCard}>
               {media}
               <View style={styles.cardCaption}>
-                <Text numberOfLines={2} style={styles.cardName}>{item.name}</Text>
-                <Text style={styles.chevron}>›</Text>
+                <Text numberOfLines={1} style={styles.cardName}>{item.name}</Text>
+                <Text style={styles.cardChevron}>›</Text>
               </View>
-            </>
+            </View>
           )}
         </Pressable>
       </Link>
@@ -150,7 +150,7 @@ function ItemCollection({ items, isList }: {
     });
   }
 
-  if (isList) return <View style={styles.itemList}>{items.map((item) => renderItem(item))}</View>;
+  if (isList) return <View style={styles.itemList}>{items.map((item, index) => renderItem(item, index > 0))}</View>;
   if (items.length <= cardsPerPage) return <View style={styles.itemGrid}>{renderCardRows(items)}</View>;
 
   return (
@@ -179,11 +179,14 @@ const styles = StyleSheet.create({
   addLabel: { color: colors.text, fontSize: 15, fontWeight: '700' },
   heading: { color: colors.text, fontSize: 18, fontWeight: '700' },
   sectionHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  viewToggle: { flexDirection: 'row', backgroundColor: '#EAF1EA', borderRadius: 12, padding: 3 },
-  viewOption: { minWidth: 48, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, borderRadius: 9 },
-  activeView: { backgroundColor: colors.surface },
-  viewLabel: { color: colors.muted, fontSize: 13 },
-  activeViewLabel: { color: '#2D6654', fontWeight: '700' },
+  viewToggle: {
+    flexDirection: 'row', gap: 2, backgroundColor: '#F2EDE5', borderRadius: 24,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: '#E7E0D6', padding: 3,
+  },
+  viewOption: { minWidth: 52, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, borderRadius: 20 },
+  activeView: { backgroundColor: '#FFEBAA' },
+  viewLabel: { color: colors.muted, fontSize: 13, fontWeight: '600' },
+  activeViewLabel: { color: colors.text, fontWeight: '700' },
   empty: {
     borderRadius: 14,
     backgroundColor: '#F1F3EA',
@@ -196,22 +199,29 @@ const styles = StyleSheet.create({
   singleCardColumn: { maxWidth: '48%' },
   cardPages: { gap: 6 },
   pageHint: { color: colors.muted, fontSize: 13, textAlign: 'right' },
-  itemList: { gap: 8 },
+  itemList: {
+    backgroundColor: colors.surface,
+    borderColor: '#E7E0D6',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
   itemCard: {
     backgroundColor: colors.surface,
-    borderColor: '#E0E7DE',
+    borderColor: '#E7E0D6',
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   cardPressed: { opacity: 0.78 },
-  listRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44, paddingHorizontal: 10 },
-  cardMedia: { width: '100%', height: 76, backgroundColor: '#E8EFE8' },
-  listMedia: { width: 30, height: 30, borderRadius: 6, backgroundColor: '#E8EFE8' },
+  listRow: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 50, paddingHorizontal: 12, paddingVertical: 7 },
+  listDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#E7E0D6' },
+  cardMedia: { width: '100%', aspectRatio: 4 / 3, backgroundColor: '#FFF5D7' },
+  listMedia: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#FFF5D7' },
   cardPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   placeholderIcon: { fontSize: 24, opacity: 0.8 },
   listIcon: { fontSize: 15 },
-  cardCaption: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 38, paddingHorizontal: 8, paddingVertical: 4 },
+  cardCaption: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 42, paddingHorizontal: 10, paddingVertical: 6 },
   cardName: { color: colors.text, flex: 1, fontSize: 15, fontWeight: '700' },
-  chevron: { color: '#5B7567', fontSize: 18 },
+  cardChevron: { color: colors.muted, fontSize: 18 },
 });
