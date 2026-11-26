@@ -35,6 +35,10 @@ export default function ItemSearch({ locationId }: { locationId: string }) {
   return (
     <View style={styles.section}>
       <View style={styles.searchBar}>
+        <View style={styles.searchIcon} accessible={false} importantForAccessibility="no-hide-descendants">
+          <View style={styles.searchLens} />
+          <View style={styles.searchHandle} />
+        </View>
         <TextInput
           accessibilityLabel="물건 이름 검색"
           placeholder="물건 이름 검색"
@@ -76,10 +80,19 @@ export default function ItemSearch({ locationId }: { locationId: string }) {
 
 const styles = StyleSheet.create({
   section: { gap: 12 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 4, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: '#DEE7DE' },
-  input: { flex: 1, minWidth: 0, minHeight: 44, paddingHorizontal: 10, fontSize: 16, color: colors.text },
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, padding: 4, paddingLeft: 8,
+    borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+  },
+  searchIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: colors.primarySoft },
+  searchLens: { position: 'absolute', top: 8, left: 8, width: 12, height: 12, borderRadius: 6, borderWidth: 1.5, borderColor: colors.muted },
+  searchHandle: {
+    position: 'absolute', top: 20, left: 18, width: 7, height: 1.5,
+    borderRadius: 1, backgroundColor: colors.muted, transform: [{ rotate: '45deg' }],
+  },
+  input: { flex: 1, minWidth: 0, minHeight: 44, paddingHorizontal: 2, fontSize: 16, color: colors.text },
   clearButton: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  clearIcon: { color: '#2D6654', fontSize: 22 },
+  clearIcon: { color: colors.muted, fontSize: 22 },
   results: { gap: 8 },
   result: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, backgroundColor: '#EAF2EA' },
   message: { color: colors.muted, fontSize: 14, lineHeight: 20 },
