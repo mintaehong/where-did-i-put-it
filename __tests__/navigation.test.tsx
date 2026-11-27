@@ -597,6 +597,11 @@ test('물건이 네 개를 넘으면 카드 보기에서 옆으로 넘길 수 �
   await fireEvent.press(screen.getByRole('button', { name: '목록 보기' }));
   expect(screen.queryByText(/옆으로 넘겨 더 보기/)).toBeNull();
   expect(screen.getAllByRole('link', { name: /^물건 \d/ })).toHaveLength(5);
+  expect(screen.getAllByRole('link', { name: /^물건 \d/ })[0]).toHaveProp('accessibilityLabel', '물건 5');
+  await fireEvent.press(screen.getByRole('button', { name: '물건 정렬, 최근 등록순' }));
+  expect(screen.getByRole('button', { name: '최근 등록순', selected: true })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: '이름순' }));
+  expect(screen.getAllByRole('link', { name: /^물건 \d/ })[0]).toHaveProp('accessibilityLabel', '물건 1');
 });
 
 test('내용이 남은 위치는 취소할 수 있고 두 번째 확인 뒤 함께 삭제된다', async () => {

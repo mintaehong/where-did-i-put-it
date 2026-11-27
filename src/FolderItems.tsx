@@ -1,6 +1,6 @@
 import { Link, useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { ActivityIndicator, Button, Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Button, Image, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { TabIcon } from './BottomNavigation';
 import { listItems } from './db/items';
@@ -10,13 +10,28 @@ import { colors, screenStyles } from './theme';
 
 const viewOptions = [{ value: 'grid', label: '카드' }, { value: 'list', label: '목록' }] as const;
 const cardsPerPage = 4;
+const sortOptions = [
+  { id: 'newest', label: '최근 등록순' },
+  { id: 'oldest', label: '오래된 등록순' },
+  { id: 'name', label: '이름순' },
+] as const;
+type ItemSort = typeof sortOptions[number]['id'];
+const itemCollator = new Intl.Collator('ko-KR', { numeric: true, sensitivity: 'base' });
 
 export default function FolderItems({ folderId }: { folderId: string }) {
   const router = useRouter();
   const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [sort, setSort] = useState<ItemSort>('newest');
+  const [sorting, setSorting] = useState(false);
   const [items, setItems] = useState<Awaited<ReturnType<typeof listItems>>>();
   const [loadError, setLoadError] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const sortLabel = sortOptions.find((option) => option.id === sort)?.label;
+  const sortedItems = useMemo(() => {
+    if (sort === 'newest') return items?.slice().reverse();
+    if (sort === 'name') return items?.slice().sort((first, second) => itemCollator.compare(first.name, second.name));
+    return items;
+  }, [items, sort]);
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -73,7 +88,21 @@ export default function FolderItems({ folderId }: { folderId: string }) {
               <Text style={[screenStyles.body, styles.emptyMessage]}>아직 등록된 물건이 없어요.</Text>
             </View>
           ) : (
-            <ItemCollection items={items} isList={view === 'list'} />
+            <>
+              {items.length > 1 && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`물건 정렬, ${sortLabel}`}
+                  accessibilityState={{ expanded: sorting }}
+                  onPress={() => setSorting(true)}
+                  style={styles.sortTrigger}
+                >
+                  <Text style={styles.sortLabel}>{sortLabel}</Text>
+                  <Text accessible={false} style={styles.sortLabel}>⌄</Text>
+                </Pressable>
+              )}
+              <ItemCollection key={sort} items={sortedItems ?? items} isList={view === 'list'} />
+            </>
           )}
           <Pressable
             accessibilityRole="button"
@@ -85,6 +114,30 @@ export default function FolderItems({ folderId }: { folderId: string }) {
           </Pressable>
         </>
       )}
+      <Modal visible={sorting} transparent animationType="fade" onRequestClose={() => setSorting(false)}>
+        <View style={styles.sortOverlay}>
+          <Pressable accessible={false} style={StyleSheet.absoluteFill} onPress={() => setSorting(false)} />
+          <View style={styles.sortMenu} accessibilityViewIsModal>
+            <Text accessibilityRole="header" style={styles.sortTitle}>물건 정렬</Text>
+            {sortOptions.map(({ id, label }) => (
+              <Pressable
+                key={id}
+                accessibilityRole="button"
+                accessibilityLabel={label}
+                accessibilityState={{ selected: sort === id }}
+                onPress={() => {
+                  setSort(id);
+                  setSorting(false);
+                }}
+                style={[styles.sortOption, sort === id && styles.sortSelected]}
+              >
+                <Text style={styles.sortLabel}>{label}</Text>
+                {sort === id && <Text style={styles.sortLabel}>✓</Text>}
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -176,6 +229,19 @@ function ItemCollection({ items, isList }: {
 }
 
 const styles = StyleSheet.create({
+  sortTrigger: {
+    alignSelf: 'flex-end', minHeight: 44, flexDirection: 'row',
+    alignItems: 'center', gap: 6, paddingHorizontal: 8,
+  },
+  sortLabel: { color: colors.text, fontSize: 14, fontWeight: '600' },
+  sortOverlay: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#241A165C' },
+  sortMenu: { width: '100%', maxWidth: 320, borderRadius: 18, backgroundColor: colors.surface, padding: 12, gap: 4 },
+  sortTitle: { color: colors.text, fontSize: 16, fontWeight: '700', paddingHorizontal: 10, paddingVertical: 8 },
+  sortOption: {
+    minHeight: 44, borderRadius: 10, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', gap: 8, paddingHorizontal: 10,
+  },
+  sortSelected: { backgroundColor: colors.primarySoft },
   addButton: {
     minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 14,
     backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 10,
