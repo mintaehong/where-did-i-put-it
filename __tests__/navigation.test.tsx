@@ -385,6 +385,7 @@ test('물건을 다른 보관 위치로 옮기면 경로와 양쪽 목록이 갱
 test('보관함에서 물건 이름 일부를 입력하면 바로 결과가 나오고 상세를 열 수 있다', async () => {
   const item = {
     id: 'sticker', name: '스티커', photoPath: null, folderId: 'closet',
+    createdAt: '2026-11-25T12:00:00', updatedAt: '2026-11-27T12:00:00',
     path: [{ id: 'home', name: '우리 집' }, { id: 'closet', name: '옷장' }],
   };
   const officeItem = {
@@ -412,6 +413,8 @@ test('보관함에서 물건 이름 일부를 입력하면 바로 결과가 나�
 
   await fireEvent.changeText(input, ' 스티 ');
   expect(await screen.findByText('우리 집 › 옷장')).toBeOnTheScreen();
+  expect(screen.getByText('등록일 2026. 11. 25.')).toBeOnTheScreen();
+  expect(screen.getByText('수정일 2026. 11. 27.')).toBeOnTheScreen();
   expect(searchItems).toHaveBeenLastCalledWith('스티', 'home');
   await fireEvent.press(screen.getByRole('button', { name: '우리 집 장소 바꾸기' }));
   await fireEvent.press(screen.getByRole('button', { name: '회사' }));
@@ -426,6 +429,7 @@ test('보관함에서 물건 이름 일부를 입력하면 바로 결과가 나�
   await fireEvent.press(screen.getByRole('link', { name: /스티커/ }));
   expect(screen).toHavePathname('/item/sticker');
   expect(await screen.findByRole('button', { name: '스티커 이름 변경' })).toBeOnTheScreen();
+  expect(screen.getByText('수정일 2026. 11. 27.')).toBeOnTheScreen();
 });
 
 test('홈에서 대화 화면을 열고 여러 질문을 보낸 뒤 물건 상세를 연다', async () => {

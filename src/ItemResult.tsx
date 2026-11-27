@@ -2,11 +2,12 @@ import { Link } from 'expo-router';
 import { Image, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { itemPhotoUri } from './itemPhotoFiles';
+import ItemDates from './ItemDates';
 import ParcelMark from './ParcelMark';
 import { colors } from './theme';
 
 export default function ItemResult({ item, variant, highlight }: {
-  item: { id: string; name: string; photoPath?: string | null; path: { name: string }[] };
+  item: { id: string; name: string; photoPath?: string | null; path: { name: string }[]; createdAt?: string; updatedAt?: string };
   variant?: 'conversation';
   highlight?: string;
 }) {
@@ -40,6 +41,7 @@ export default function ItemResult({ item, variant, highlight }: {
             <Text style={styles.path}>
               {item.path.length ? item.path.map((folder) => folder.name).join(' › ') : '보관 위치를 찾을 수 없어요.'}
             </Text>
+            <ItemDates createdAt={item.createdAt} updatedAt={item.updatedAt} />
           </View>
           <Text importantForAccessibility="no" style={[styles.chevron, variant === 'conversation' && styles.conversationArrow]}>›</Text>
         </View>

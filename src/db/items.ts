@@ -5,8 +5,11 @@ import { findItemMentions } from '../itemMentions';
 import { getFolderPath, getStorage } from './folders';
 
 type Item = { id: string; name: string; photoPath: string | null };
+type DatedItem = Item & { createdAt?: string; updatedAt?: string };
 
 const itemColumns = 'items.id, items.name, item_images.relative_path AS photoPath';
+const dateColumns = `items.created_at AS createdAt,
+  MAX(items.updated_at, COALESCE(item_images.created_at, items.updated_at)) AS updatedAt`;
 const itemTables = 'FROM items LEFT JOIN item_images ON item_images.item_id = items.id';
 const insertImage = 'INSERT INTO item_images (id, item_id, relative_path, mime_type, byte_size, created_at) VALUES (?, ?, ?, ?, ?, ?)';
 
@@ -46,8 +49,8 @@ export async function listRecentItemsByLocation() {
 
 export async function getItemDetails(id: string) {
   const db = await getStorage();
-  const item = await db.getFirstAsync<Item & { folderId: string; note: string | null }>(
-    `SELECT ${itemColumns}, items.folder_id AS folderId, items.note ${itemTables} WHERE items.id = ?`,
+  const item = await db.getFirstAsync<DatedItem & { folderId: string; note: string | null }>(
+    `SELECT ${itemColumns}, ${dateColumns}, items.folder_id AS folderId, items.note ${itemTables} WHERE items.id = ?`,
     id,
   );
   if (!item) return null;
@@ -73,13 +76,13 @@ export async function searchItems(name: string, locationId: string) {
   if (!query) return [];
 
   const db = await getStorage();
-  const items = await db.getAllAsync<Item & { folderId: string }>(
+  const items = await db.getAllAsync<DatedItem & { folderId: string }>(
     `WITH RECURSIVE location_folders(id) AS (
        SELECT id FROM folders WHERE id = ?
        UNION
        SELECT folders.id FROM folders JOIN location_folders ON folders.parent_id = location_folders.id
      )
-     SELECT ${itemColumns}, items.folder_id AS folderId ${itemTables}
+     SELECT ${itemColumns}, ${dateColumns}, items.folder_id AS folderId ${itemTables}
      WHERE items.folder_id IN (SELECT id FROM location_folders)
        AND instr(lower(items.name), lower(?)) > 0
      ORDER BY items.name, items.id`,
@@ -92,13 +95,13 @@ export async function searchItems(name: string, locationId: string) {
 export async function askForItems(question: string) {
   if (!question.trim()) return [];
   const db = await getStorage();
-  const items = await db.getAllAsync<Item & { folderId: string }>(
-    `SELECT ${itemColumns}, items.folder_id AS folderId ${itemTables} ORDER BY items.name, items.id`,
+  const items = await db.getAllAsync<DatedItem & { folderId: string }>(
+    `SELECT ${itemColumns}, ${dateColumns}, items.folder_id AS folderId ${itemTables} ORDER BY items.name, items.id`,
   );
   return withItemPaths(findItemMentions(question, items));
 }
 
-async function withItemPaths(items: (Item & { folderId: string })[]) {
+async function withItemPaths(items: (DatedItem & { folderId: string })[]) {
   const paths = new Map<string, ReturnType<typeof getFolderPath>>();
   return Promise.all(items.map(async (item) => {
     const path = paths.get(item.folderId) ?? getFolderPath(item.folderId);
@@ -136,10 +139,11 @@ export async function attachItemPhoto(itemId: string, photo: SelectedPhoto) {
   const imageId = randomUUID();
   const saved = await copyItemPhoto(photo, imageId);
   try {
-    await db.runAsync(
-      insertImage,
-      imageId, itemId, saved.relativePath, photo.mimeType ?? null, saved.size, new Date().toISOString(),
-    );
+    await db.withExclusiveTransactionAsync(async (transaction) => {
+      const now = new Date().toISOString();
+      await transaction.runAsync(insertImage, imageId, itemId, saved.relativePath, photo.mimeType ?? null, saved.size, now);
+      await touchItem(transaction, itemId, now);
+    });
     return saved.relativePath;
   } catch (error) {
     discardItemPhoto(saved.file);
@@ -151,12 +155,16 @@ export async function replaceItemPhoto(itemId: string, previousPath: string, pho
   const db = await getStorage();
   const saved = await copyItemPhoto(photo, randomUUID());
   try {
-    const result = await db.runAsync(
-      `UPDATE item_images SET relative_path = ?, mime_type = ?, byte_size = ?, created_at = ?
-       WHERE item_id = ? AND relative_path = ?`,
-      saved.relativePath, photo.mimeType ?? null, saved.size, new Date().toISOString(), itemId, previousPath,
-    );
-    if (!result.changes) throw new Error('교체할 사진을 찾을 수 없어요.');
+    await db.withExclusiveTransactionAsync(async (transaction) => {
+      const now = new Date().toISOString();
+      const result = await transaction.runAsync(
+        `UPDATE item_images SET relative_path = ?, mime_type = ?, byte_size = ?, created_at = ?
+         WHERE item_id = ? AND relative_path = ?`,
+        saved.relativePath, photo.mimeType ?? null, saved.size, now, itemId, previousPath,
+      );
+      if (!result.changes) throw new Error('교체할 사진을 찾을 수 없어요.');
+      await touchItem(transaction, itemId, now);
+    });
   } catch (error) {
     discardItemPhoto(saved.file);
     throw error;
@@ -168,13 +176,19 @@ export async function replaceItemPhoto(itemId: string, previousPath: string, pho
 
 export async function removeItemPhoto(itemId: string, photoPath: string) {
   const db = await getStorage();
-  const result = await db.runAsync(
-    'DELETE FROM item_images WHERE item_id = ? AND relative_path = ?',
-    itemId,
-    photoPath,
-  );
-  if (!result.changes) throw new Error('삭제할 사진을 찾을 수 없어요.');
+  await db.withExclusiveTransactionAsync(async (transaction) => {
+    const result = await transaction.runAsync(
+      'DELETE FROM item_images WHERE item_id = ? AND relative_path = ?', itemId, photoPath,
+    );
+    if (!result.changes) throw new Error('삭제할 사진을 찾을 수 없어요.');
+    await touchItem(transaction, itemId, new Date().toISOString());
+  });
   discardStoredItemPhoto(photoPath);
+}
+
+async function touchItem(db: Awaited<ReturnType<typeof getStorage>>, id: string, timestamp: string) {
+  const result = await db.runAsync('UPDATE items SET updated_at = ? WHERE id = ?', timestamp, id);
+  if (!result.changes) throw new Error('물건을 찾을 수 없어요.');
 }
 
 export async function deleteItem(itemId: string) {

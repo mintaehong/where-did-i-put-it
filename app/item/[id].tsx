@@ -5,6 +5,7 @@ import { ActivityIndicator, Keyboard, Pressable, StyleSheet, Text } from 'react-
 import { deleteItem, getItemDetails, renameItem } from '../../src/db/items';
 import DeleteConfirmation from '../../src/DeleteConfirmation';
 import EditableName from '../../src/EditableName';
+import ItemDates from '../../src/ItemDates';
 import ItemLocation from '../../src/ItemLocation';
 import ItemNote from '../../src/ItemNote';
 import ItemPhoto from '../../src/ItemPhoto';
@@ -31,6 +32,11 @@ function ItemDetails({ id }: { id: string }) {
     return () => { active = false; };
   }, [id]);
 
+  function updateItem(changes: Partial<NonNullable<Awaited<ReturnType<typeof getItemDetails>>>>) {
+    const updatedAt = new Date().toISOString();
+    setItem((previous) => previous ? { ...previous, ...changes, updatedAt } : previous);
+  }
+
   return (
     <ItemScreenScroll>
       {loadError ? (
@@ -46,22 +52,19 @@ function ItemDetails({ id }: { id: string }) {
             name={item.name}
             inputLabel="새 물건 이름"
             persistName={renameItem}
-            onSaved={(name) => setItem((previous) => previous ? { ...previous, name } : previous)}
+            onSaved={(name) => updateItem({ name })}
           />
           <ItemPhoto
             itemId={item.id}
             itemName={item.name}
             previousPath={item.photoPath}
-            onSaved={(photoPath) => {
-              setItem((previous) => previous ? { ...previous, photoPath } : previous);
-            }}
+            onSaved={(photoPath) => updateItem({ photoPath })}
           />
           <ItemLocation itemId={item.id} folderId={item.folderId} path={item.path} onMoved={(folder, path) => {
-            setItem((previous) => previous ? { ...previous, folderId: folder.id, path } : previous);
+            updateItem({ folderId: folder.id, path });
           }} />
-          <ItemNote itemId={item.id} note={item.note} onSaved={(note) => {
-            setItem((previous) => previous ? { ...previous, note } : previous);
-          }} />
+          <ItemNote itemId={item.id} note={item.note} onSaved={(note) => updateItem({ note })} />
+          <ItemDates createdAt={item.createdAt} updatedAt={item.updatedAt} />
           <DeleteItem itemId={item.id} itemName={item.name} onDeleted={() => {
             setItem(null);
             if (!navigation.isFocused()) return;
