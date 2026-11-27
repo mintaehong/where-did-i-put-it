@@ -2,6 +2,7 @@ import { Link } from 'expo-router';
 import { Image, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { itemPhotoUri } from './itemPhotoFiles';
+import ParcelMark from './ParcelMark';
 import { colors } from './theme';
 
 export default function ItemResult({ item, variant, highlight }: {
@@ -16,7 +17,7 @@ export default function ItemResult({ item, variant, highlight }: {
       <Pressable accessibilityRole="link" onPress={Keyboard.dismiss} style={({ pressed }) => pressed && styles.pressed}>
         <View style={[styles.result, variant === 'conversation' ? styles.conversation : styles.searchCard]}>
           {(variant === 'conversation' || Boolean(item.photoPath)) && (
-            <View style={styles.thumbnail} importantForAccessibility="no-hide-descendants">
+            <View style={[styles.thumbnail, !item.photoPath && styles.thumbnailPlaceholder]} importantForAccessibility="no-hide-descendants">
               {item.photoPath ? (
                 <Image
                   accessible={false}
@@ -26,7 +27,7 @@ export default function ItemResult({ item, variant, highlight }: {
                   resizeMode="cover"
                 />
               ) : (
-                <View style={styles.box}><View style={styles.boxLid} /></View>
+                <ParcelMark small />
               )}
             </View>
           )}
@@ -62,7 +63,6 @@ const styles = StyleSheet.create({
   conversationArrow: { color: '#242422' },
   thumbnail: { width: 42, height: 42, borderRadius: 9, backgroundColor: '#F2F0ED', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   photo: { width: '100%', height: '100%' },
-  box: { width: 20, height: 17, borderWidth: 1.5, borderColor: '#6C6964', borderRadius: 3 },
-  boxLid: { height: 5, borderBottomWidth: 1.5, borderColor: '#6C6964' },
+  thumbnailPlaceholder: { backgroundColor: colors.primarySoft },
   pressed: { opacity: 0.7 },
 });

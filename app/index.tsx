@@ -4,6 +4,7 @@ import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, Text
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import EditableName from '../src/EditableName';
+import ParcelMark from '../src/ParcelMark';
 import { createRootFolder, listRootChildFolders, listRootFolders, renameFolder } from '../src/db/folders';
 import { listRecentItemsByLocation } from '../src/db/items';
 import { itemPhotoUri } from '../src/itemPhotoFiles';
@@ -311,7 +312,7 @@ function RecentPreviews({ items }: { items: Awaited<ReturnType<typeof listRecent
           <View key={item.id} style={styles.previewSlot}>
             <Link href={{ pathname: '/item/[id]', params: { id: item.id } }} asChild>
               <Pressable accessibilityRole="link" accessibilityLabel={item.name} style={styles.previewItem}>
-                <View style={styles.previewMedia}>
+                <View style={[styles.previewMedia, !item.photoPath && styles.previewPlaceholder]}>
                   {item.photoPath ? (
                     <Image source={{ uri: itemPhotoUri(item.photoPath) }} resizeMode="cover" style={styles.previewPhoto} />
                   ) : (
@@ -329,15 +330,6 @@ function RecentPreviews({ items }: { items: Awaited<ReturnType<typeof listRecent
           </View>
         ))}
       </View>
-    </View>
-  );
-}
-
-function ParcelMark() {
-  return (
-    <View importantForAccessibility="no-hide-descendants" style={styles.parcel}>
-      <View style={styles.parcelLid} />
-      <View style={styles.parcelSeam} />
     </View>
   );
 }
@@ -397,6 +389,7 @@ const styles = StyleSheet.create({
   previewSlot: { flex: 1, minWidth: 0, maxWidth: '32%' },
   previewItem: { gap: 6 },
   previewMedia: { aspectRatio: 1, borderRadius: 12, backgroundColor: '#F2F0ED', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  previewPlaceholder: { backgroundColor: colors.primarySoft },
   previewPhoto: { width: '100%', height: '100%' },
   previewName: { width: '100%', textAlign: 'center', color: '#464541', fontSize: 13 },
   extraPreview: { position: 'absolute', right: 2, bottom: 2, maxWidth: '95%', paddingHorizontal: 3, borderRadius: 5, backgroundColor: '#35483E' },
@@ -404,9 +397,6 @@ const styles = StyleSheet.create({
   folderSummary: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   folderMark: { width: 14, height: 11, borderWidth: 1.3, borderColor: '#77746F', borderRadius: 2 },
   folderNames: { flexShrink: 1, color: '#62605C', fontSize: 13 },
-  parcel: { width: 30, height: 25, borderWidth: 1.5, borderColor: '#817E77', borderRadius: 3 },
-  parcelLid: { position: 'absolute', top: 6, left: 0, right: 0, borderTopWidth: 1.5, borderColor: '#817E77' },
-  parcelSeam: { position: 'absolute', top: 0, left: 12, height: 11, borderLeftWidth: 1.5, borderColor: '#817E77' },
   emptyPlace: { alignItems: 'center', gap: 8, paddingVertical: 5 },
   emptyText: { color: '#62605C', textAlign: 'center', fontSize: 14 },
   addItem: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 18, borderRadius: 24, borderWidth: 1, borderColor: '#F1D684', backgroundColor: '#FFF9E6' },

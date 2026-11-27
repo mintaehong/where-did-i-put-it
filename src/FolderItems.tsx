@@ -5,6 +5,7 @@ import { ActivityIndicator, Button, Image, Pressable, ScrollView, StyleSheet, Te
 import { TabIcon } from './BottomNavigation';
 import { listItems } from './db/items';
 import { itemPhotoUri } from './itemPhotoFiles';
+import ParcelMark from './ParcelMark';
 import { colors, screenStyles } from './theme';
 
 const viewOptions = [{ value: 'grid', label: '카드' }, { value: 'list', label: '목록' }] as const;
@@ -108,7 +109,7 @@ function ItemCollection({ items, isList }: {
       />
     ) : (
       <View style={[mediaStyle, styles.cardPlaceholder]} accessible={false}>
-        <Text style={[styles.placeholderIcon, isList && styles.listIcon]}>📦</Text>
+        <ParcelMark small={isList} />
       </View>
     );
 
@@ -233,8 +234,6 @@ const styles = StyleSheet.create({
   cardMedia: { width: '100%', aspectRatio: 4 / 3, backgroundColor: colors.primarySoft },
   listMedia: { width: 32, height: 32, borderRadius: 8, backgroundColor: colors.primarySoft },
   cardPlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  placeholderIcon: { fontSize: 24, opacity: 0.8 },
-  listIcon: { fontSize: 15 },
   cardCaption: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 42, paddingHorizontal: 10, paddingVertical: 6 },
   cardName: { color: colors.text, flex: 1, fontSize: 15, fontWeight: '700' },
   cardChevron: { color: colors.muted, fontSize: 18 },
