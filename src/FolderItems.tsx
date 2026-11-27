@@ -26,7 +26,7 @@ export default function FolderItems({ folderId }: { folderId: string }) {
   const [items, setItems] = useState<Awaited<ReturnType<typeof listItems>>>();
   const [loadError, setLoadError] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const sortLabel = sortOptions.find((option) => option.id === sort)?.label;
+  const currentSort = sortOptions.find((option) => option.id === sort);
   const sortedItems = useMemo(() => {
     if (sort === 'newest') return items?.slice().reverse();
     if (sort === 'name') return items?.slice().sort((first, second) => itemCollator.compare(first.name, second.name));
@@ -52,19 +52,44 @@ export default function FolderItems({ folderId }: { folderId: string }) {
       <View style={styles.sectionHeader}>
         <Text accessibilityRole="header" style={styles.heading}>보관 중인 물건</Text>
         {!loadError && !!items?.length && (
-          <View style={styles.viewToggle}>
-            {viewOptions.map(({ value, label }) => (
+          <View style={styles.sectionControls}>
+            <View style={styles.viewToggle}>
+              <View pointerEvents="none" style={styles.viewTrack} />
+              {viewOptions.map(({ value, label }) => (
+                <Pressable
+                  key={value}
+                  accessibilityRole="button"
+                  accessibilityLabel={label + ' 보기'}
+                  accessibilityState={{ selected: view === value }}
+                  onPress={() => setView(value)}
+                  style={styles.viewOption}
+                >
+                  <View style={[styles.viewPill, view === value && styles.activeView]}>
+                    <Text style={[styles.viewLabel, view === value && styles.activeViewLabel]}>{label}</Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+            {items.length > 1 && (
               <Pressable
-                key={value}
                 accessibilityRole="button"
-                accessibilityLabel={label + ' 보기'}
-                accessibilityState={{ selected: view === value }}
-                onPress={() => setView(value)}
-                style={[styles.viewOption, view === value && styles.activeView]}
+                accessibilityLabel={`물건 정렬, ${currentSort?.label}`}
+                accessibilityState={{ expanded: sorting }}
+                onPress={() => setSorting(true)}
+                style={styles.sortTrigger}
               >
-                <Text style={[styles.viewLabel, view === value && styles.activeViewLabel]}>{label}</Text>
+                <View style={styles.sortIcon} importantForAccessibility="no-hide-descendants">
+                  <View style={styles.sortLines}>
+                    <View style={[styles.sortLine, { width: 10 }]} />
+                    <View style={[styles.sortLine, { width: 7 }]} />
+                    <View style={[styles.sortLine, { width: 4 }]} />
+                  </View>
+                  <View style={styles.sortArrow}>
+                    <View style={styles.sortArrowTip} />
+                  </View>
+                </View>
               </Pressable>
-            ))}
+            )}
           </View>
         )}
       </View>
@@ -88,21 +113,7 @@ export default function FolderItems({ folderId }: { folderId: string }) {
               <Text style={[screenStyles.body, styles.emptyMessage]}>아직 등록된 물건이 없어요.</Text>
             </View>
           ) : (
-            <>
-              {items.length > 1 && (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`물건 정렬, ${sortLabel}`}
-                  accessibilityState={{ expanded: sorting }}
-                  onPress={() => setSorting(true)}
-                  style={styles.sortTrigger}
-                >
-                  <Text style={styles.sortLabel}>{sortLabel}</Text>
-                  <Text accessible={false} style={styles.sortLabel}>⌄</Text>
-                </Pressable>
-              )}
-              <ItemCollection key={sort} items={sortedItems ?? items} isList={view === 'list'} />
-            </>
+            <ItemCollection key={sort} items={sortedItems ?? items} isList={view === 'list'} />
           )}
           <Pressable
             accessibilityRole="button"
@@ -229,9 +240,18 @@ function ItemCollection({ items, isList }: {
 }
 
 const styles = StyleSheet.create({
-  sortTrigger: {
-    alignSelf: 'flex-end', minHeight: 44, flexDirection: 'row',
-    alignItems: 'center', gap: 6, paddingHorizontal: 8,
+  sortTrigger: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  sortIcon: {
+    width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+  },
+  sortLines: { gap: 3 },
+  sortLine: { height: 1.5, borderRadius: 1, backgroundColor: colors.text },
+  sortArrow: { width: 1.5, height: 12, backgroundColor: colors.text },
+  sortArrowTip: {
+    position: 'absolute', left: -2.4, bottom: 0, width: 6, height: 6,
+    borderRightWidth: 1.5, borderBottomWidth: 1.5, borderColor: colors.text, transform: [{ rotate: '45deg' }],
   },
   sortLabel: { color: colors.text, fontSize: 14, fontWeight: '600' },
   sortOverlay: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#241A165C' },
@@ -250,13 +270,18 @@ const styles = StyleSheet.create({
   addLabel: { color: colors.text, fontSize: 15, fontWeight: '700' },
   heading: { color: colors.text, fontSize: 18, fontWeight: '700' },
   sectionHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  sectionControls: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginLeft: 'auto' },
   viewToggle: {
-    flexDirection: 'row', gap: 2, backgroundColor: '#F2EDE5', borderRadius: 24,
-    borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, padding: 3,
+    flexDirection: 'row', paddingHorizontal: 3,
   },
-  viewOption: { minWidth: 52, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, borderRadius: 20 },
+  viewTrack: {
+    position: 'absolute', top: 5, bottom: 5, left: 0, right: 0,
+    backgroundColor: '#F2EDE5', borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
+  },
+  viewOption: { minWidth: 44, minHeight: 44, alignItems: 'stretch', justifyContent: 'center' },
+  viewPill: { minHeight: 28, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 14 },
   activeView: { backgroundColor: colors.primary },
-  viewLabel: { color: colors.muted, fontSize: 13, fontWeight: '600' },
+  viewLabel: { color: colors.muted, fontSize: 12, fontWeight: '600' },
   activeViewLabel: { color: colors.text, fontWeight: '700' },
   empty: {
     flexDirection: 'row',
