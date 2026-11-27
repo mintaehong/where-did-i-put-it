@@ -400,9 +400,15 @@ test('보관함에서 물건 이름 일부를 입력하면 바로 결과가 나�
 
   const input = await screen.findByLabelText('물건 이름 검색');
   expect(screen.queryByRole('button', { name: '물어보기' })).toBeNull();
+  expect(screen.getByRole('header', { name: '보관 중인 물건' })).toBeOnTheScreen();
   await fireEvent.changeText(input, '없는 물건');
   expect(await screen.findByText('찾는 물건이 없어요')).toBeOnTheScreen();
   expect(screen.getByText('다른 이름으로 검색해 보세요.')).toBeOnTheScreen();
+  expect(screen.getByRole('header', { name: '보관 중인 물건' })).toBeOnTheScreen();
+  expect(screen.getByRole('header', { name: '하위 보관 위치' })).toBeOnTheScreen();
+  await fireEvent.press(screen.getByRole('button', { name: '검색어 지우기' }));
+  expect(screen.getByRole('header', { name: '보관 중인 물건' })).toBeOnTheScreen();
+  expect(screen.getByRole('header', { name: '하위 보관 위치' })).toBeOnTheScreen();
 
   await fireEvent.changeText(input, ' 스티 ');
   expect(await screen.findByText('우리 집 › 옷장')).toBeOnTheScreen();

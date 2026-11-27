@@ -1,10 +1,11 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, BackHandler, Button, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { HeaderHeightContext } from 'expo-router/react-navigation';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, BackHandler, Button, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import ChildFolders from '../src/ChildFolders';
 import FolderItems from '../src/FolderItems';
-import ItemSearch from '../src/ItemSearch';
+import ItemSearch, { ItemSearchResults } from '../src/ItemSearch';
 import { listRootFolders } from '../src/db/folders';
 import TabSlide from '../src/TabSlide';
 import { colors, screenStyles } from '../src/theme';
@@ -16,14 +17,19 @@ type FolderList =
 export default function StorageScreen() {
   const [result, setResult] = useState<FolderList>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [searchInput, setSearchInput] = useState('');
+  const [searchBottom, setSearchBottom] = useState(0);
+  const [searchScrollTop, setSearchScrollTop] = useState(0);
   const [menuTop, setMenuTop] = useState<number | null>(null);
   const triggerBottom = useRef(screenStyles.content.padding + 44);
   const scrollTop = useRef(0);
   const router = useRouter();
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
   const { locationId: selectedId } = useLocalSearchParams<{ locationId?: string }>();
   const roots = result.status === 'ready' ? result.folders : [];
   const selected = roots.find((folder) => folder.id === selectedId) ?? roots[0];
   const showLocations = menuTop !== null && roots.length > 1;
+  const query = searchInput.trim();
 
   const closeLocations = useCallback(() => setMenuTop(null), []);
 
@@ -58,9 +64,13 @@ export default function StorageScreen() {
         <ScrollView
           contentContainerStyle={screenStyles.content}
           keyboardShouldPersistTaps="handled"
+          scrollEnabled={!query}
           accessibilityElementsHidden={showLocations}
           importantForAccessibility={showLocations ? 'no-hide-descendants' : 'auto'}
-          onScroll={(event) => { scrollTop.current = event.nativeEvent.contentOffset.y; }}
+          onScroll={(event) => {
+            scrollTop.current = event.nativeEvent.contentOffset.y;
+            if (query) setSearchScrollTop(scrollTop.current);
+          }}
           scrollEventThrottle={16}
         >
           {selected && roots.length > 1 ? (
@@ -83,7 +93,16 @@ export default function StorageScreen() {
           ) : (
             <Text accessibilityRole="header" style={screenStyles.heading}>{selected?.name ?? '보관 장소'}</Text>
           )}
-          {selected && <ItemSearch locationId={selected.id} />}
+          {selected && (
+            <ItemSearch
+              input={searchInput}
+              onChangeInput={(value) => {
+                setSearchScrollTop(scrollTop.current);
+                setSearchInput(value);
+              }}
+              onLayout={({ nativeEvent: { layout } }) => setSearchBottom(layout.y + layout.height)}
+            />
+          )}
           {result.status === 'loading' && <ActivityIndicator accessibilityLabel="보관함 불러오는 중" />}
           {result.status === 'error' && (
             <>
@@ -98,12 +117,26 @@ export default function StorageScreen() {
             <Text style={screenStyles.body}>아직 등록된 보관 장소가 없어요.</Text>
           )}
           {selected && (
-            <>
+            <View style={[styles.collections, query !== '' && styles.dimmedCollections]}>
               <FolderItems key={`items-${selected.id}`} folderId={selected.id} />
               <ChildFolders key={selected.id} parentId={selected.id} />
-            </>
+            </View>
           )}
         </ScrollView>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={headerHeight}
+          pointerEvents="box-none"
+          style={StyleSheet.absoluteFill}
+        >
+          <View pointerEvents="box-none" style={styles.screen}>
+            {selected && query !== '' && !showLocations && (
+              <View pointerEvents="box-none" style={[styles.searchOverlay, { top: Math.max(0, searchBottom - searchScrollTop + 4) }]}>
+                <ItemSearchResults locationId={selected.id} query={query} />
+              </View>
+            )}
+          </View>
+        </KeyboardAvoidingView>
         {showLocations && (
           <View style={StyleSheet.absoluteFill} accessibilityViewIsModal onAccessibilityEscape={closeLocations}>
             <Pressable accessibilityRole="button" accessibilityLabel="장소 목록 닫기" style={StyleSheet.absoluteFill} onPress={closeLocations} />
@@ -140,7 +173,12 @@ export default function StorageScreen() {
 }
 
 const styles = StyleSheet.create({
+  collections: { gap: screenStyles.content.gap },
+  dimmedCollections: { opacity: 0.69 },
   screen: { flex: 1 },
+  searchOverlay: {
+    position: 'absolute', left: screenStyles.content.padding, right: screenStyles.content.padding, bottom: 8,
+  },
   locationTrigger: { alignSelf: 'flex-start', maxWidth: '100%', minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8 },
   triggerName: { flexShrink: 1 },
   triggerIcon: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },

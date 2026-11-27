@@ -14,7 +14,7 @@ export default function ItemResult({ item, variant, highlight }: {
   return (
     <Link href={{ pathname: '/item/[id]', params: { id: item.id } }} asChild>
       <Pressable accessibilityRole="link" onPress={Keyboard.dismiss} style={({ pressed }) => pressed && styles.pressed}>
-        <View style={[styles.result, variant === 'conversation' && styles.conversation]}>
+        <View style={[styles.result, variant === 'conversation' ? styles.conversation : styles.searchCard]}>
           {(variant === 'conversation' || Boolean(item.photoPath)) && (
             <View style={styles.thumbnail} importantForAccessibility="no-hide-descendants">
               {item.photoPath ? (
@@ -53,6 +53,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
   conversation: { gap: 9, padding: 9, borderRadius: 12, borderWidth: 1, borderColor: '#E4E0DA', backgroundColor: colors.surface },
+  searchCard: { borderWidth: 0, borderRadius: 0 },
   resultText: { flex: 1, gap: 4 },
   name: { color: colors.text, fontSize: 16, fontWeight: '700' },
   highlight: { backgroundColor: colors.primary },
