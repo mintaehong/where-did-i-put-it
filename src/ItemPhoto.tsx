@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Animated, Easing, Image, Modal, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Animated, Easing, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { attachItemPhoto, removeItemPhoto, replaceItemPhoto } from './db/items';
@@ -22,11 +22,13 @@ type PhotoProps = {
 type PhotoSource = 'camera' | 'album';
 
 export default function ItemPhoto(props: PhotoProps) {
-  const { height: windowHeight } = useWindowDimensions();
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const [sheetOffset] = useState(() => new Animated.Value(windowHeight));
   const sheetHeight = useRef(0);
   const [preview, setPreview] = useState<SelectedPhoto>();
   const [viewingPhoto, setViewingPhoto] = useState(false);
+  const [viewerHeight, setViewerHeight] = useState(0);
+  const [loadedPhoto, setLoadedPhoto] = useState<{ uri: string; ratio: number }>();
   const [showSources, setShowSources] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [failedUri, setFailedUri] = useState<string>();
@@ -42,6 +44,10 @@ export default function ItemPhoto(props: PhotoProps) {
   const disabled = busy || draft?.disabled;
   const existingUri = previousPath ? itemPhotoUri(previousPath) : undefined;
   const displayedUri = photo?.uri ?? existingUri;
+  const photoRatio = loadedPhoto?.uri === existingUri ? loadedPhoto?.ratio ?? 1 : 1;
+  const viewerMaxHeight = windowHeight * 0.72;
+  const viewerWidth = Math.min(520, windowWidth - 40, Math.max(144, viewerMaxHeight * photoRatio));
+  const frameHeight = Math.min(viewerMaxHeight, Math.max(96, viewerWidth / photoRatio));
 
   async function runPhotoAction(action: () => Promise<void>, errorMessage?: string) {
     if (pending.current || draft?.disabled) return;
@@ -119,6 +125,9 @@ export default function ItemPhoto(props: PhotoProps) {
         source={{ uri: displayedUri }}
         style={styles.photo}
         resizeMode="contain"
+        onLoad={({ nativeEvent: { source } }) => {
+          if (source.width > 0 && source.height > 0) setLoadedPhoto({ uri: displayedUri, ratio: source.width / source.height });
+        }}
         onError={() => setFailedUri(displayedUri)}
       />
     )
@@ -139,17 +148,37 @@ export default function ItemPhoto(props: PhotoProps) {
         <Modal visible={viewingPhoto} transparent animationType="fade" onRequestClose={() => setViewingPhoto(false)}>
           <SafeAreaView style={styles.viewerOverlay}>
             <Pressable accessible={false} style={StyleSheet.absoluteFill} onPress={() => setViewingPhoto(false)} />
-            <View style={styles.viewer} accessibilityViewIsModal>
+            <View style={[styles.viewer, { width: viewerWidth, height: frameHeight }]} accessibilityViewIsModal>
               <Pressable accessibilityRole="button" accessibilityLabel="사진 크게 보기 닫기" onPress={() => setViewingPhoto(false)} style={styles.viewerClose}>
                 <Text style={styles.viewerCloseIcon}>×</Text>
               </Pressable>
-              <Image
-                accessible
-                accessibilityLabel="확대 사진"
-                source={{ uri: existingUri }}
-                style={styles.viewerPhoto}
-                resizeMode="contain"
-              />
+              {Platform.OS === 'ios' ? (
+                <ScrollView
+                  style={styles.viewerPhoto}
+                  onLayout={({ nativeEvent: { layout } }) => setViewerHeight(layout.height)}
+                  minimumZoomScale={1}
+                  maximumZoomScale={4}
+                  showsHorizontalScrollIndicator={false}
+                  showsVerticalScrollIndicator={false}
+                  contentInsetAdjustmentBehavior="never"
+                >
+                  <Image
+                    accessible
+                    accessibilityLabel="확대 사진"
+                    source={{ uri: existingUri }}
+                    style={{ width: '100%', height: viewerHeight }}
+                    resizeMode="contain"
+                  />
+                </ScrollView>
+              ) : (
+                <Image
+                  accessible
+                  accessibilityLabel="확대 사진"
+                  source={{ uri: existingUri }}
+                  style={styles.viewerPhoto}
+                  resizeMode="contain"
+                />
+              )}
             </View>
           </SafeAreaView>
         </Modal>
@@ -317,17 +346,17 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   expandIcon: { color: colors.text, fontSize: 21, lineHeight: 24 },
-  viewerOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20, backgroundColor: '#241A168F' },
+  viewerOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20, backgroundColor: '#241A167A' },
   viewer: {
-    width: '100%', maxWidth: 520, height: '72%', padding: 12, gap: 8,
-    borderRadius: 20, backgroundColor: '#171513',
+    padding: 4, borderRadius: 20, backgroundColor: colors.surface,
   },
   viewerClose: {
-    alignSelf: 'flex-end', width: 48, height: 48, alignItems: 'center', justifyContent: 'center',
-    borderRadius: 24, backgroundColor: '#38322E',
+    position: 'absolute', top: 10, right: 10, zIndex: 1,
+    width: 46, height: 46, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 23, backgroundColor: '#241A16A6',
   },
-  viewerCloseIcon: { color: colors.surface, fontSize: 30 },
-  viewerPhoto: { flex: 1, width: '100%' },
+  viewerCloseIcon: { color: colors.surface, fontSize: 24 },
+  viewerPhoto: { flex: 1, width: '100%', borderRadius: 16, overflow: 'hidden' },
   photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: 16, backgroundColor: colors.surface },
   placeholder: { padding: 20, borderRadius: 16, backgroundColor: colors.surface },
   photoPanel: { gap: 10, padding: 14, borderRadius: 16, backgroundColor: '#FFF8E9' },
