@@ -544,6 +544,11 @@ test('목록에서 물건 상세를 열어 사진과 전체 보관 위치를 확
   expect(await screen.findByRole('button', { name: '시계 이름 변경' })).toBeOnTheScreen();
   expect(screen.getByText('우리 집 › 안방 › 옷장')).toBeOnTheScreen();
   expect(screen.getByLabelText('시계 사진')).toHaveProp('source', { uri: 'file:///documents/images/watch.jpg' });
+  await fireEvent.press(screen.getByRole('button', { name: '사진 크게 보기' }));
+  expect(screen.getByLabelText('확대 사진')).toHaveProp('source', { uri: 'file:///documents/images/watch.jpg' });
+  await fireEvent.press(screen.getByRole('button', { name: '사진 크게 보기 닫기' }));
+  expect(screen.queryByLabelText('확대 사진')).toBeNull();
+  expect(screen).toHavePathname('/item/watch');
 
   await fireEvent.press(screen.getByRole('button', { name: '시계 이름 변경' }));
   await fireEvent.changeText(screen.getByLabelText('새 물건 이름'), ' 손목시계 ');

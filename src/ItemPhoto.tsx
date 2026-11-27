@@ -26,6 +26,7 @@ export default function ItemPhoto(props: PhotoProps) {
   const [sheetOffset] = useState(() => new Animated.Value(windowHeight));
   const sheetHeight = useRef(0);
   const [preview, setPreview] = useState<SelectedPhoto>();
+  const [viewingPhoto, setViewingPhoto] = useState(false);
   const [showSources, setShowSources] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [failedUri, setFailedUri] = useState<string>();
@@ -105,24 +106,53 @@ export default function ItemPhoto(props: PhotoProps) {
     }, '사진을 삭제하지 못했어요. 다시 시도해 주세요.');
   }
 
+  const photoImage = displayedUri && (
+    displayedUri === failedUri ? (
+      <View style={styles.placeholder}>
+        <Text style={screenStyles.body}>사진을 불러오지 못했어요.</Text>
+      </View>
+    ) : (
+      <Image
+        key={displayedUri}
+        accessible
+        accessibilityLabel={photo ? '선택한 사진' : `${detail?.itemName} 사진`}
+        source={{ uri: displayedUri }}
+        style={styles.photo}
+        resizeMode="contain"
+        onError={() => setFailedUri(displayedUri)}
+      />
+    )
+  );
+
+  const canViewPhoto = detail && existingUri && !photo && existingUri !== failedUri;
   return (
     <View style={styles.photoPanel}>
-      {displayedUri && (
-        displayedUri === failedUri ? (
-          <View style={styles.placeholder}>
-            <Text style={screenStyles.body}>사진을 불러오지 못했어요.</Text>
+      {canViewPhoto ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="사진 크게 보기" onPress={() => setViewingPhoto(true)}>
+          {photoImage}
+          <View importantForAccessibility="no-hide-descendants" style={styles.expandBadge}>
+            <Text style={styles.expandIcon}>⤢</Text>
           </View>
-        ) : (
-          <Image
-            key={displayedUri}
-            accessible
-            accessibilityLabel={photo ? '선택한 사진' : `${detail?.itemName} 사진`}
-            source={{ uri: displayedUri }}
-            style={styles.photo}
-            resizeMode="contain"
-            onError={() => setFailedUri(displayedUri)}
-          />
-        )
+        </Pressable>
+      ) : photoImage}
+      {existingUri && (
+        <Modal visible={viewingPhoto} transparent animationType="fade" onRequestClose={() => setViewingPhoto(false)}>
+          <SafeAreaView style={styles.viewerOverlay}>
+            <Pressable accessible={false} style={StyleSheet.absoluteFill} onPress={() => setViewingPhoto(false)} />
+            <View style={styles.viewer} accessibilityViewIsModal>
+              <Pressable accessibilityRole="button" accessibilityLabel="사진 크게 보기 닫기" onPress={() => setViewingPhoto(false)} style={styles.viewerClose}>
+                <Text style={styles.viewerCloseIcon}>×</Text>
+              </Pressable>
+              <Image
+                accessible
+                accessibilityLabel="확대 사진"
+                source={{ uri: existingUri }}
+                style={styles.viewerPhoto}
+                resizeMode="contain"
+              />
+            </View>
+          </SafeAreaView>
+        </Modal>
       )}
       {photo ? (
           <View style={styles.previewBar}>
@@ -281,6 +311,23 @@ function PhotoSourceIcon({ source }: { source: PhotoSource }) {
 }
 
 const styles = StyleSheet.create({
+  expandBadge: {
+    position: 'absolute', right: 8, bottom: 8, width: 34, height: 34, borderRadius: 17,
+    backgroundColor: colors.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  expandIcon: { color: colors.text, fontSize: 21, lineHeight: 24 },
+  viewerOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20, backgroundColor: '#241A168F' },
+  viewer: {
+    width: '100%', maxWidth: 520, height: '72%', padding: 12, gap: 8,
+    borderRadius: 20, backgroundColor: '#171513',
+  },
+  viewerClose: {
+    alignSelf: 'flex-end', width: 48, height: 48, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 24, backgroundColor: '#38322E',
+  },
+  viewerCloseIcon: { color: colors.surface, fontSize: 30 },
+  viewerPhoto: { flex: 1, width: '100%' },
   photo: { width: '100%', aspectRatio: 4 / 3, borderRadius: 16, backgroundColor: colors.surface },
   placeholder: { padding: 20, borderRadius: 16, backgroundColor: colors.surface },
   photoPanel: { gap: 10, padding: 14, borderRadius: 16, backgroundColor: '#FFF8E9' },
