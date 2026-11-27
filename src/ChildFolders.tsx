@@ -49,14 +49,14 @@ export default function ChildFolders({ parentId }: { parentId: string }) {
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text accessibilityRole="header" style={styles.heading}>하위 보관 위치</Text>
+        <Text accessibilityRole="header" style={styles.heading}>보관 공간</Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="보관 위치 추가"
+          accessibilityLabel="공간 추가"
           onPress={() => setAdding(true)}
           style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
         >
-          <Text style={styles.addLabel}>+ 보관 위치 추가</Text>
+          <Text style={styles.addLabel}>＋ 공간 추가</Text>
         </Pressable>
       </View>
       {folders.length === 0 && (

@@ -19,8 +19,8 @@ export default function ItemSearch({ input, onChangeInput, onLayout }: {
           <View style={styles.searchHandle} />
         </View>
         <TextInput
-          accessibilityLabel="물건 이름 검색"
-          placeholder="물건 이름 검색"
+          accessibilityLabel="여기서 물건 찾기"
+          placeholder="여기서 물건 찾기"
           placeholderTextColor={colors.muted}
           value={input}
           onChangeText={onChangeInput}
@@ -75,7 +75,7 @@ export function ItemSearchResults({ locationId, query }: { locationId: string; q
           </Pressable>
         ) : result.items.length === 0 ? (
           <View style={styles.empty} accessibilityLiveRegion="polite">
-            <Text style={styles.emptyTitle}>찾는 물건이 없어요</Text>
+            <Text style={styles.emptyTitle}>이 장소에서 찾는 물건이 없어요.</Text>
             <Text style={styles.message}>다른 이름으로 검색해 보세요.</Text>
           </View>
         ) : result.items.map((item, index) => (

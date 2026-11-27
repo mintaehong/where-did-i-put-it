@@ -50,7 +50,7 @@ export default function FolderItems({ folderId }: { folderId: string }) {
   return (
     <>
       <View style={styles.sectionHeader}>
-        <Text accessibilityRole="header" style={styles.heading}>보관 중인 물건</Text>
+        <Text accessibilityRole="header" style={styles.heading}>여기에 둔 물건</Text>
         {!loadError && !!items?.length && (
           <View style={styles.sectionControls}>
             <View style={styles.viewToggle}>
@@ -110,7 +110,7 @@ export default function FolderItems({ folderId }: { folderId: string }) {
               <View style={styles.emptyIcon}>
                 <TabIcon path="/storage" color={colors.text} />
               </View>
-              <Text style={[screenStyles.body, styles.emptyMessage]}>아직 등록된 물건이 없어요.</Text>
+              <Text style={[screenStyles.body, styles.emptyMessage]}>여기에 둔 물건이 아직 없어요.</Text>
             </View>
           ) : (
             <ItemCollection key={sort} items={sortedItems ?? items} isList={view === 'list'} />

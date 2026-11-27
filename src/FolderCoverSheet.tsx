@@ -42,7 +42,7 @@ export default function FolderCoverSheet(props: SheetProps) {
   const photoUri = cover ? ('photo' in cover ? cover.photo.uri : undefined) : initialPhoto;
   const unchangedIcon = cover && 'icon' in cover && initialPath === `icon:${cover.icon}`;
   const saveDisabled = picking || saving || !cover || Boolean(unchangedIcon) || (!editing && (!parent || !name.trim()));
-  const title = editing ? '대표 이미지 변경' : '보관 위치 추가';
+  const title = editing ? '대표 이미지 변경' : '공간 추가';
 
   useEffect(() => {
     if (!parentId) return;
@@ -125,9 +125,9 @@ export default function FolderCoverSheet(props: SheetProps) {
               ) : (
                 <>
                   {!editing && <View style={styles.nameField}>
-                    <Text style={styles.coverLabel}>위치 이름</Text>
+                    <Text style={styles.coverLabel}>공간 이름</Text>
                     <NameInput
-                      accessibilityLabel="보관 위치 이름"
+                      accessibilityLabel="공간 이름"
                       placeholder="예: 책상 서랍"
                       placeholderTextColor={colors.muted}
                       value={name}
@@ -209,7 +209,7 @@ export default function FolderCoverSheet(props: SheetProps) {
               )}
             </ScrollView>
             {(editing || parent) && (
-              <FormSaveButton label={editing ? '대표 이미지 저장' : '보관 위치 저장'} saving={saving} disabled={saveDisabled} onPress={save} />
+              <FormSaveButton label={editing ? '대표 이미지 저장' : '공간 저장'} saving={saving} disabled={saveDisabled} onPress={save} />
             )}
           </SafeAreaView>
         </KeyboardAvoidingView>
