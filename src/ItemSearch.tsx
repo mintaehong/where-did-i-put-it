@@ -70,7 +70,10 @@ export default function ItemSearch({ locationId }: { locationId: string }) {
               <Text style={styles.message}>검색하지 못했어요. 다시 시도</Text>
             </Pressable>
           ) : result.items.length === 0 ? (
-            <Text style={styles.message}>‘{query}’에 해당하는 물건이 없어요.</Text>
+            <View style={styles.empty} accessibilityLiveRegion="polite">
+              <Text style={styles.emptyTitle}>찾는 물건이 없어요</Text>
+              <Text style={styles.message}>다른 이름으로 검색해 보세요.</Text>
+            </View>
           ) : result.items.map((item) => <ItemResult key={item.id} item={item} highlight={query} />)}
         </View>
       )}
@@ -94,6 +97,11 @@ const styles = StyleSheet.create({
   clearButton: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   clearIcon: { color: colors.muted, fontSize: 22 },
   results: { gap: 8 },
+  empty: {
+    gap: 4, padding: 14, borderRadius: 14, backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
+  },
+  emptyTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
   result: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14, backgroundColor: '#EAF2EA' },
   message: { color: colors.muted, fontSize: 14, lineHeight: 20 },
 });
