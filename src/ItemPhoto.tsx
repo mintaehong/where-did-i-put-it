@@ -225,19 +225,20 @@ export default function ItemPhoto(props: PhotoProps) {
         </>
       ) : (
         <View style={styles.photoActions}>
-          <Pressable accessibilityRole="button" disabled={busy} onPress={() => {
+          <Pressable accessibilityRole="button" accessibilityLabel="사진 바꾸기" disabled={busy} onPress={() => {
             if (replacementSource.current) return;
             setError(undefined);
             sheetOffset.setValue(windowHeight);
             setShowSources(true);
-          }} style={styles.changePhoto}>
+          }} style={({ pressed }) => [styles.photoButton, styles.replacePhoto, (pressed || busy) && styles.dimmed]}>
+            <Text accessible={false} style={styles.replaceIcon}>↻</Text>
             <Text style={styles.choiceLabel}>사진 바꾸기</Text>
           </Pressable>
           <Pressable accessibilityRole="button" disabled={busy} onPress={() => {
             if (replacementSource.current) return;
             setError(undefined);
             setConfirmDelete(true);
-          }} style={styles.changePhoto}>
+          }} style={({ pressed }) => [styles.photoButton, styles.deletePhotoButton, (pressed || busy) && styles.dimmed]}>
             <Text style={styles.deleteLabel}>사진 삭제</Text>
           </Pressable>
         </View>
@@ -393,9 +394,15 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 7, left: 2, width: 11, height: 11, borderTopWidth: 1.5,
     borderLeftWidth: 1.5, borderColor: colors.text, transform: [{ rotate: '45deg' }],
   },
-  choiceLabel: { color: '#2D6654', fontSize: 14, fontWeight: '700', textAlign: 'center' },
-  changePhoto: { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 },
-  photoActions: { flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 4 },
+  choiceLabel: { color: colors.text, fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  photoButton: {
+    minHeight: 44, justifyContent: 'center', alignItems: 'center', borderRadius: 12, paddingHorizontal: 12,
+    backgroundColor: colors.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
+  },
+  replacePhoto: { flexDirection: 'row', gap: 6 },
+  deletePhotoButton: { borderColor: '#DDBCB3' },
+  replaceIcon: { color: colors.text, fontSize: 17, fontWeight: '700' },
+  photoActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 6 },
   sheetOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#241A165C' },
   sheet: { backgroundColor: '#FFF8E9', borderTopLeftRadius: 24, borderTopRightRadius: 24 },
   sheetContent: { width: '100%', maxWidth: 480, alignSelf: 'center', padding: 20, gap: 12 },
