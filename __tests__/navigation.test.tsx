@@ -125,7 +125,7 @@ test('선택한 장소에 하위 폴더를 사진과 함께 저장하고 목록�
   expect(screen.queryByRole('button', { name: '앨범에서 선택' })).toBeNull();
   await fireEvent.press(screen.getByRole('button', { name: '사진을 대표 이미지로 사용' }));
   expect(screen.getByRole('button', { name: '사진 찍기' })).toBeOnTheScreen();
-  await fireEvent.press(screen.getByRole('button', { name: '사진을 대표 이미지로 사용' }));
+  await fireEvent.press(screen.getByRole('button', { name: '사진 메뉴 닫기' }));
   expect(screen.queryByRole('button', { name: '앨범에서 선택' })).toBeNull();
   expect(screen.getByLabelText('공간 이름')).toHaveProp('value', '  옷장  ');
   await fireEvent.press(screen.getByRole('button', { name: '사진을 대표 이미지로 사용' }));

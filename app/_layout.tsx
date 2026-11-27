@@ -15,6 +15,7 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: colors.background },
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.text,
+          headerBackButtonDisplayMode: 'minimal',
           headerShadowVisible: false,
           animation: tabSlideSide((route.params as { tabSlide?: string } | undefined)?.tabSlide)
             ? 'none'
