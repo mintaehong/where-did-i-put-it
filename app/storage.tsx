@@ -95,6 +95,7 @@ export default function StorageScreen() {
           )}
           {selected && (
             <ItemSearch
+              locationName={selected.name}
               input={searchInput}
               onChangeInput={(value) => {
                 setSearchScrollTop(scrollTop.current);

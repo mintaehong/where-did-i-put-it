@@ -399,7 +399,7 @@ test('보관함에서 물건 이름 일부를 입력하면 바로 결과가 나�
   jest.mocked(listRootFolders).mockResolvedValue([{ id: 'home', name: '우리 집' }, { id: 'office', name: '회사' }]);
   await renderRouter({ storage: StorageScreen, 'item/[id]': ItemScreen }, { initialUrl: '/storage' });
 
-  const input = await screen.findByLabelText('여기서 물건 찾기');
+  const input = await screen.findByLabelText('우리 집에서 물건 찾기');
   expect(screen.queryByRole('button', { name: '물어보기' })).toBeNull();
   expect(screen.getByRole('header', { name: '여기에 둔 물건' })).toBeOnTheScreen();
   await fireEvent.changeText(input, '없는 물건');
@@ -423,6 +423,7 @@ test('보관함에서 물건 이름 일부를 입력하면 바로 결과가 나�
   expect(within(officeResult).getByLabelText('스티커 봉투 사진', { includeHiddenElements: true }))
     .toHaveProp('source', { uri: 'file:///documents/images/office-sticker.jpg' });
   expect(searchItems).toHaveBeenLastCalledWith('스티', 'office');
+  expect(screen.getByLabelText('회사에서 물건 찾기')).toHaveProp('placeholder', '회사에서 물건 찾기');
   await fireEvent.press(screen.getByRole('button', { name: '회사 장소 바꾸기' }));
   await fireEvent.press(screen.getByRole('button', { name: '우리 집' }));
   expect(await screen.findByText('우리 집 › 옷장')).toBeOnTheScreen();
@@ -453,7 +454,7 @@ test('홈에서 대화 화면을 열고 여러 질문을 보낸 뒤 물건 상�
   expect(screen).toHavePathname('/ask');
   expect(screen.getByRole('tab', { name: '물어보기', selected: true })).toBeOnTheScreen();
   const input = screen.getByLabelText('질문 입력');
-  expect(screen.queryByLabelText('여기서 물건 찾기')).toBeNull();
+  expect(screen.queryByLabelText(/에서 물건 찾기$/)).toBeNull();
   await fireEvent.changeText(input, '야 스티커 어딨냐');
   expect(askForItems).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByRole('button', { name: '물어보기' }));

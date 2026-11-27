@@ -6,11 +6,13 @@ import { searchItems } from './db/items';
 import ItemResult from './ItemResult';
 import { colors } from './theme';
 
-export default function ItemSearch({ input, onChangeInput, onLayout }: {
+export default function ItemSearch({ locationName, input, onChangeInput, onLayout }: {
+  locationName: string;
   input: string;
   onChangeInput: (value: string) => void;
   onLayout: (event: LayoutChangeEvent) => void;
 }) {
+  const searchLabel = `${locationName}에서 물건 찾기`;
   return (
     <View onLayout={onLayout}>
       <View style={styles.searchBar}>
@@ -19,8 +21,8 @@ export default function ItemSearch({ input, onChangeInput, onLayout }: {
           <View style={styles.searchHandle} />
         </View>
         <TextInput
-          accessibilityLabel="여기서 물건 찾기"
-          placeholder="여기서 물건 찾기"
+          accessibilityLabel={searchLabel}
+          placeholder={searchLabel}
           placeholderTextColor={colors.muted}
           value={input}
           onChangeText={onChangeInput}
