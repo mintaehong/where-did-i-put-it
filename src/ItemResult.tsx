@@ -15,10 +15,16 @@ export default function ItemResult({ item, variant, highlight }: {
     <Link href={{ pathname: '/item/[id]', params: { id: item.id } }} asChild>
       <Pressable accessibilityRole="link" onPress={Keyboard.dismiss} style={({ pressed }) => pressed && styles.pressed}>
         <View style={[styles.result, variant === 'conversation' && styles.conversation]}>
-          {variant === 'conversation' && (
+          {(variant === 'conversation' || Boolean(item.photoPath)) && (
             <View style={styles.thumbnail} importantForAccessibility="no-hide-descendants">
               {item.photoPath ? (
-                <Image source={{ uri: itemPhotoUri(item.photoPath) }} style={styles.photo} resizeMode="cover" />
+                <Image
+                  accessible={false}
+                  accessibilityLabel={`${item.name} 사진`}
+                  source={{ uri: itemPhotoUri(item.photoPath) }}
+                  style={styles.photo}
+                  resizeMode="cover"
+                />
               ) : (
                 <View style={styles.box}><View style={styles.boxLid} /></View>
               )}

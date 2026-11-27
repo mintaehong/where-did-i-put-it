@@ -388,7 +388,7 @@ test('보관함에서 물건 이름 일부를 입력하면 바로 결과가 나�
     path: [{ id: 'home', name: '우리 집' }, { id: 'closet', name: '옷장' }],
   };
   const officeItem = {
-    id: 'office-sticker', name: '스티커 봉투', photoPath: null, folderId: 'office',
+    id: 'office-sticker', name: '스티커 봉투', photoPath: 'images/office-sticker.jpg', folderId: 'office',
     path: [{ id: 'office', name: '회사' }],
   };
   jest.mocked(searchItems)
@@ -410,7 +410,9 @@ test('보관함에서 물건 이름 일부를 입력하면 바로 결과가 나�
   await fireEvent.press(screen.getByRole('button', { name: '우리 집 장소 바꾸기' }));
   await fireEvent.press(screen.getByRole('button', { name: '회사' }));
   expect(screen.queryByText('우리 집 › 옷장')).toBeNull();
-  expect(await screen.findByRole('link', { name: /스티커 봉투/ })).toBeOnTheScreen();
+  const officeResult = await screen.findByRole('link', { name: /스티커 봉투/ });
+  expect(within(officeResult).getByLabelText('스티커 봉투 사진', { includeHiddenElements: true }))
+    .toHaveProp('source', { uri: 'file:///documents/images/office-sticker.jpg' });
   expect(searchItems).toHaveBeenLastCalledWith('스티', 'office');
   await fireEvent.press(screen.getByRole('button', { name: '회사 장소 바꾸기' }));
   await fireEvent.press(screen.getByRole('button', { name: '우리 집' }));
